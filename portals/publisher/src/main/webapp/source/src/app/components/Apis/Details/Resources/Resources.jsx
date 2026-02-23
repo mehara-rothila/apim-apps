@@ -210,6 +210,17 @@ export default function Resources(props) {
             case 'amznResourceContentEncode':
                 updatedOperation['x-amzn-resource-content-encode'] = value;
                 break;
+            case 'resourceEndpointConfig':
+                if (value !== null && value !== undefined) {
+                    updatedOperation[
+                        'x-wso2-resource-endpoint-config'
+                    ] = value;
+                } else {
+                    delete updatedOperation[
+                        'x-wso2-resource-endpoint-config'
+                    ];
+                }
+                break;
             case 'scopes': {
                 if (!updatedOperation.security) {
                     updatedOperation.security = [{ default: [] }];

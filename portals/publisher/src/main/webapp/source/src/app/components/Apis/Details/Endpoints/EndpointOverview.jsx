@@ -48,6 +48,7 @@ import {
 } from './endpointUtils';
 import GeneralConfiguration from './GeneralConfiguration';
 import LoadbalanceFailoverConfig from './LoadbalanceFailoverConfig';
+import ResourceEndpoints from './ResourceEndpoints';
 import GenericEndpoint from './GenericEndpoint';
 import AdvanceEndpointConfig from './AdvancedConfig/AdvanceEndpointConfig';
 import EndpointSecurity from './GeneralConfiguration/EndpointSecurity';
@@ -1353,6 +1354,15 @@ function EndpointOverview(props) {
                             </Grid>
                         )
                 }
+                {endpointType.key === 'http' && (
+                    <Grid item xs={12}>
+                        <ResourceEndpoints
+                            api={api}
+                            swaggerDef={swaggerDef}
+                            epConfig={epConfig}
+                        />
+                    </Grid>
+                )}
             </Grid>
             {componentValidator.includes('advancedConfigurations') && (
                 <Dialog open={advanceConfigOptions.open}>

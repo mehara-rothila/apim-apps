@@ -39,6 +39,7 @@ import { FormattedMessage } from 'react-intl';
 import DescriptionAndSummary from './operationComponents/DescriptionAndSummary';
 import OperationGovernance from './operationComponents/OperationGovernance';
 import AWSLambdaSettings from './operationComponents/AWSLambdaSettings';
+import ResourceEndpointConfig from './operationComponents/ResourceEndpointConfig';
 import Parameters from './operationComponents/Parameters';
 import SOAPToRESTListing from './operationComponents/SOAPToREST/SOAPToRESTListing';
 import { getOperationScopes } from '../operationUtils';
@@ -382,6 +383,24 @@ function Operation(props) {
                                     target={target}
                                     verb={verb}
                                     arns={arns}
+                                />
+                            )
+                        }
+                        {
+                            api.endpointConfig
+                            && api.endpointConfig.endpoint_type
+                            && api.endpointConfig.endpoint_type === 'http'
+                            && (
+                                <ResourceEndpointConfig
+                                    operation={operation}
+                                    operationsDispatcher={
+                                        operationsDispatcher
+                                    }
+                                    target={target}
+                                    verb={verb}
+                                    disableUpdate={
+                                        disableUpdate
+                                    }
                                 />
                             )
                         }
