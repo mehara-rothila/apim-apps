@@ -39,6 +39,7 @@ import { FormattedMessage } from 'react-intl';
 import DescriptionAndSummary from './operationComponents/DescriptionAndSummary';
 import OperationGovernance from './operationComponents/OperationGovernance';
 import AWSLambdaSettings from './operationComponents/AWSLambdaSettings';
+import ResourceEndpointSelector from './operationComponents/ResourceEndpointSelector';
 import Parameters from './operationComponents/Parameters';
 import SOAPToRESTListing from './operationComponents/SOAPToREST/SOAPToRESTListing';
 import { getOperationScopes } from '../operationUtils';
@@ -345,6 +346,18 @@ function Operation(props) {
                             setFocusOperationLevel={setFocusOperationLevel}
                             componentValidator={componentValidator}
                         />
+                        {(!api.endpointConfig
+                            || !api.endpointConfig.endpoint_type
+                            || api.endpointConfig.endpoint_type !== 'awslambda') && (
+                            <ResourceEndpointSelector
+                                operation={operation}
+                                operationsDispatcher={operationsDispatcher}
+                                target={target}
+                                verb={verb}
+                                spec={spec}
+                                disableUpdate={disableUpdate}
+                            />
+                        )}
                         {!hideParameters && (
                             <Parameters
                                 operation={operation}

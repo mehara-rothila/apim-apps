@@ -36,6 +36,7 @@ import { getBasePath } from 'AppComponents/Shared/Utils';
 import MCPServerEndpoints from 'AppComponents/MCPServers/Details/Endpoints/Endpoints';
 import EndpointOverview from './EndpointOverview';
 import AIEndpoints from './AIEndpoints/AIEndpoints';
+import ResourceEndpointDefinitions from './ResourceEndpointDefinitions';
 import { createEndpointConfig, getEndpointTemplateByType } from './endpointUtils';
 import { API_SECURITY_KEY_TYPE_PRODUCTION, 
     API_SECURITY_KEY_TYPE_SANDBOX } from '../Configuration/components/APISecurity/components/apiSecurityConstants';
@@ -345,6 +346,14 @@ function Endpoints(props) {
                 apiObjectCopy.endpointConfig.endpoint_type = 'http';
             }
             updateAPI(apiObjectCopy)
+                .then(() => {
+                    // Save swagger if resource endpoint definitions exist
+                    const defs = swagger['x-wso2-resource-endpoint-definitions'];
+                    if (defs && defs.length > 0) {
+                        return api.updateSwagger(swagger);
+                    }
+                    return null;
+                })
                 .catch((error) => {
                     if (error.response) {
                         Alert.error(error.response.body.description);
@@ -445,6 +454,13 @@ function Endpoints(props) {
                 apiObjectCopy.endpointConfig.endpoint_type = 'http';
             }
             updateAPI(apiObjectCopy)
+                .then(() => {
+                    const defs = swagger['x-wso2-resource-endpoint-definitions'];
+                    if (defs && defs.length > 0) {
+                        return api.updateSwagger(swagger);
+                    }
+                    return null;
+                })
                 .catch((error) => {
                     if (error.response) {
                         Alert.error(error.response.body.description);
@@ -838,6 +854,11 @@ function Endpoints(props) {
                                         />
                                     </Grid>
                                 </Grid>
+                                <ResourceEndpointDefinitions
+                                    swaggerDef={swagger}
+                                    updateSwagger={changeSwagger}
+                                    apiObject={apiObject}
+                                />
                                 {
                                     endpointValidity.isValid
                                         ? <div />
