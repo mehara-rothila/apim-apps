@@ -32,8 +32,12 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
-import Icon from '@mui/material/Icon';
 import Tooltip from '@mui/material/Tooltip';
+import CheckCircleIcon
+    from '@mui/icons-material/CheckCircle';
+import SettingsIcon from '@mui/icons-material/Settings';
+import SecurityIcon from '@mui/icons-material/Security';
+import LockIcon from '@mui/icons-material/Lock';
 import { FormattedMessage } from 'react-intl';
 
 const MSG_PREFIX = 'Apis.Details.Endpoints'
@@ -351,15 +355,34 @@ export default function AddEditResourceEndpoint(props) {
                                                     <FormattedMessage
                                                         id={
                                                             MSG_PREFIX
+                                                            + '.testEndpoint'
+                                                        }
+                                                        defaultMessage='Check endpoint status'
+                                                    />
+                                                )}
+                                            >
+                                                <CheckCircleIcon
+                                                    fontSize='small'
+                                                />
+                                            </Tooltip>
+                                        </IconButton>
+                                        <IconButton
+                                            size='small'
+                                        >
+                                            <Tooltip
+                                                title={(
+                                                    <FormattedMessage
+                                                        id={
+                                                            MSG_PREFIX
                                                             + '.advConfig'
                                                         }
                                                         defaultMessage='Endpoint configurations'
                                                     />
                                                 )}
                                             >
-                                                <Icon>
-                                                    settings
-                                                </Icon>
+                                                <SettingsIcon
+                                                    fontSize='small'
+                                                />
                                             </Tooltip>
                                         </IconButton>
                                         <IconButton
@@ -376,9 +399,28 @@ export default function AddEditResourceEndpoint(props) {
                                                     />
                                                 )}
                                             >
-                                                <Icon>
-                                                    security
-                                                </Icon>
+                                                <SecurityIcon
+                                                    fontSize='small'
+                                                />
+                                            </Tooltip>
+                                        </IconButton>
+                                        <IconButton
+                                            size='small'
+                                        >
+                                            <Tooltip
+                                                title={(
+                                                    <FormattedMessage
+                                                        id={
+                                                            MSG_PREFIX
+                                                            + '.certs'
+                                                        }
+                                                        defaultMessage='Certificates'
+                                                    />
+                                                )}
+                                            >
+                                                <LockIcon
+                                                    fontSize='small'
+                                                />
                                             </Tooltip>
                                         </IconButton>
                                     </InputAdornment>
@@ -432,15 +474,34 @@ export default function AddEditResourceEndpoint(props) {
                                                     <FormattedMessage
                                                         id={
                                                             MSG_PREFIX
+                                                            + '.testEndpoint'
+                                                        }
+                                                        defaultMessage='Check endpoint status'
+                                                    />
+                                                )}
+                                            >
+                                                <CheckCircleIcon
+                                                    fontSize='small'
+                                                />
+                                            </Tooltip>
+                                        </IconButton>
+                                        <IconButton
+                                            size='small'
+                                        >
+                                            <Tooltip
+                                                title={(
+                                                    <FormattedMessage
+                                                        id={
+                                                            MSG_PREFIX
                                                             + '.advConfig'
                                                         }
                                                         defaultMessage='Endpoint configurations'
                                                     />
                                                 )}
                                             >
-                                                <Icon>
-                                                    settings
-                                                </Icon>
+                                                <SettingsIcon
+                                                    fontSize='small'
+                                                />
                                             </Tooltip>
                                         </IconButton>
                                         <IconButton
@@ -457,9 +518,28 @@ export default function AddEditResourceEndpoint(props) {
                                                     />
                                                 )}
                                             >
-                                                <Icon>
-                                                    security
-                                                </Icon>
+                                                <SecurityIcon
+                                                    fontSize='small'
+                                                />
+                                            </Tooltip>
+                                        </IconButton>
+                                        <IconButton
+                                            size='small'
+                                        >
+                                            <Tooltip
+                                                title={(
+                                                    <FormattedMessage
+                                                        id={
+                                                            MSG_PREFIX
+                                                            + '.certs'
+                                                        }
+                                                        defaultMessage='Certificates'
+                                                    />
+                                                )}
+                                            >
+                                                <LockIcon
+                                                    fontSize='small'
+                                                />
                                             </Tooltip>
                                         </IconButton>
                                     </InputAdornment>
