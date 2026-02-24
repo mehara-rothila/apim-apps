@@ -18,7 +18,9 @@ import React, {
     useContext, useEffect, useState, useReducer,
 } from 'react';
 import { styled } from '@mui/material/styles';
-import { Grid } from '@mui/material';
+import {
+    Grid, Dialog, DialogTitle, DialogContent,
+} from '@mui/material';
 import Typography from '@mui/material/Typography';
 import { FormattedMessage, injectIntl } from 'react-intl';
 import PropTypes from 'prop-types';
@@ -30,14 +32,22 @@ import NewEndpointCreate from 'AppComponents/Apis/Details/Endpoints/NewEndpointC
 import { APIContext } from 'AppComponents/Apis/Details/components/ApiContext';
 import cloneDeep from 'lodash.clonedeep';
 import { isRestricted } from 'AppData/AuthManager';
+import CONSTS from 'AppData/Constants';
 import { Alert, Progress } from 'AppComponents/Shared';
 import AddCircle from '@mui/icons-material/AddCircle';
 import { getBasePath } from 'AppComponents/Shared/Utils';
 import MCPServerEndpoints from 'AppComponents/MCPServers/Details/Endpoints/Endpoints';
-import EndpointOverview from './EndpointOverview';
 import AIEndpoints from './AIEndpoints/AIEndpoints';
 import ResourceEndpointDefinitions from './ResourceEndpointDefinitions';
-import { createEndpointConfig, getEndpointTemplateByType } from './endpointUtils';
+import GeneralConfiguration from './GeneralConfiguration';
+import LoadbalanceFailoverConfig from './LoadbalanceFailoverConfig';
+import AdvanceEndpointConfig from './AdvancedConfig/AdvanceEndpointConfig';
+import EndpointSecurity from './GeneralConfiguration/EndpointSecurity';
+import {
+    createEndpointConfig,
+    getEndpointTemplateByType,
+    getEndpointTypeProperty,
+} from './endpointUtils';
 import { API_SECURITY_KEY_TYPE_PRODUCTION, 
     API_SECURITY_KEY_TYPE_SANDBOX } from '../Configuration/components/APISecurity/components/apiSecurityConstants';
 
@@ -127,12 +137,26 @@ function Endpoints(props) {
     const [swagger, setSwagger] = useState(defaultSwagger);
     const [endpointValidity, setAPIEndpointsValid] = useState({ isValid: true, message: '' });
     const [isUpdating, setUpdating] = useState(false);
-    const [sandBoxBackendList, setSandBoxBackendList] = useState([]);
-    const [productionBackendList, setProductionBackendList] = useState([]);
+    const [sandBoxBackendList] = useState([]);
+    const [productionBackendList] = useState([]);
     const [isValidSequenceBackend, setIsValidSequenceBackend] = useState(false);
-    const [isCustomBackendSelected, setIsCustomBackendSelected] = useState(false);
+    const [, setIsCustomBackendSelected] = useState(false);
     const [componentValidator, setComponentValidator] = useState([]);
     const [endpointSecurityTypes, setEndpointSecurityTypes] = useState([]);
+    const [endpointSecurityInfo, setEndpointSecurityInfo] = useState(null);
+    const [advanceConfigOptions, setAdvancedConfigOptions] = useState({
+        open: false,
+        index: 0,
+        type: '',
+        category: '',
+        config: undefined,
+    });
+    const [endpointSecurityConfig, setEndpointSecurityConfig] = useState({
+        open: false,
+        type: '',
+        category: '',
+        config: undefined,
+    });
     const isMCPServer = api.isMCPServer();
 
     useEffect(() => {
@@ -258,6 +282,175 @@ function Endpoints(props) {
     useEffect(() => {
         apiDispatcher({ action: 'reset', value: api.toJSON() });
     }, [api.id]);
+
+    // Derived endpoint config and type for sections
+    const epConfig = apiObject.endpointConfig || {};
+    const globalEpType = (() => {
+        const type = epConfig.endpoint_type;
+        if (type === 'address') {
+            return {
+                key: 'address',
+                value: 'HTTP/SOAP Endpoint',
+            };
+        }
+        if (type === 'default') {
+            return {
+                key: 'default',
+                value: 'Dynamic Endpoints',
+            };
+        }
+        if (type === 'awslambda') {
+            return {
+                key: 'awslambda',
+                value: 'AWS Lambda',
+            };
+        }
+        if (type === 'sequence_backend') {
+            return {
+                key: 'sequence_backend',
+                value: 'Sequence Backend',
+            };
+        }
+        return {
+            key: 'http',
+            value: 'HTTP/REST Endpoint',
+        };
+    })();
+
+    const getAdvanceConfig = (index, epType, category) => {
+        const epTypeProp = getEndpointTypeProperty(
+            epType, category,
+        );
+        let advanceConfig = {};
+        if (index > 0) {
+            if (epConfig.endpoint_type === 'failover') {
+                advanceConfig = epConfig[epTypeProp][
+                    index - 1
+                ].config;
+            } else {
+                advanceConfig = epConfig[epTypeProp][
+                    index
+                ].config;
+            }
+        } else {
+            const endpointInfo = epConfig[epTypeProp];
+            if (Array.isArray(endpointInfo)) {
+                advanceConfig = endpointInfo[0].config;
+            } else {
+                advanceConfig = endpointInfo.config;
+            }
+        }
+        return advanceConfig;
+    };
+
+    const toggleAdvanceConfig = (index, type, category) => {
+        const advanceEPConfig = getAdvanceConfig(
+            index, type, category,
+        );
+        setAdvancedConfigOptions(() => ({
+            open: !advanceConfigOptions.open,
+            index,
+            type,
+            category,
+            config: advanceEPConfig === undefined
+                ? {} : advanceEPConfig,
+        }));
+    };
+
+    const toggleEndpointSecurityConfig = (
+        type, category,
+    ) => {
+        const tmpSecurityInfo = !endpointSecurityInfo
+            ? {
+                production: CONSTS.DEFAULT_ENDPOINT_SECURITY,
+                sandbox: CONSTS.DEFAULT_ENDPOINT_SECURITY,
+            } : endpointSecurityInfo;
+        setEndpointSecurityInfo(tmpSecurityInfo);
+        setEndpointSecurityConfig(() => ({
+            open: !endpointSecurityConfig.open,
+            type,
+            category,
+            config: endpointSecurityInfo === undefined
+                ? {} : endpointSecurityInfo,
+        }));
+    };
+
+    const saveEndpointSecurityConfig = (
+        endpointSecurityObj, enType,
+    ) => {
+        const { type } = endpointSecurityObj;
+        let newObj = endpointSecurityObj;
+        const secretPlaceholder = '******';
+        if (newObj.clientSecret === secretPlaceholder) {
+            newObj.clientSecret = '';
+        }
+        if (newObj.password === secretPlaceholder) {
+            newObj.password = '';
+        }
+        if (type === 'NONE') {
+            newObj = {
+                ...CONSTS.DEFAULT_ENDPOINT_SECURITY, type,
+            };
+        } else {
+            newObj.enabled = true;
+        }
+        apiDispatcher({
+            action: 'endpointSecurity',
+            value: {
+                ...endpointSecurityInfo,
+                [enType]: newObj,
+            },
+        });
+        setEndpointSecurityConfig({ open: false });
+    };
+
+    const closeEndpointSecurityConfig = () => {
+        setEndpointSecurityConfig({ open: false });
+    };
+
+    const saveAdvanceConfig = (advanceConfig) => {
+        const config = cloneDeep(epConfig);
+        const epConfigProperty = getEndpointTypeProperty(
+            advanceConfigOptions.type,
+            advanceConfigOptions.category,
+        );
+        const selectedEps = config[epConfigProperty];
+        if (Array.isArray(selectedEps)) {
+            if (advanceConfigOptions.type === 'failover') {
+                selectedEps[
+                    advanceConfigOptions.index - 1
+                ].config = advanceConfig;
+            } else {
+                selectedEps[
+                    advanceConfigOptions.index
+                ].config = advanceConfig;
+            }
+        } else {
+            selectedEps.config = advanceConfig;
+        }
+        setAdvancedConfigOptions({ open: false });
+        apiDispatcher({
+            action: 'set_advance_config',
+            value: {
+                ...config,
+                [epConfigProperty]: selectedEps,
+            },
+        });
+    };
+
+    const closeAdvanceConfig = () => {
+        setAdvancedConfigOptions({ open: false });
+    };
+
+    const handleEndpointCategorySelect = (event) => {
+        apiDispatcher({
+            action: 'endpoint_type',
+            value: {
+                category: event.target.value,
+                endpointType: globalEpType.key,
+            },
+        });
+    };
 
     /**
      * Method to update the api.
@@ -744,6 +937,11 @@ function Endpoints(props) {
         setIsCustomBackendSelected(false);
         setIsValidSequenceBackend(true);
         setAPIEndpointsValid(validate(apiObject.endpointImplementationType));
+        if (apiObject.endpointConfig) {
+            setEndpointSecurityInfo(
+                apiObject.endpointConfig.endpoint_security || null,
+            );
+        }
     }, [apiObject]);
 
     const saveAndRedirect = () => {
@@ -832,33 +1030,105 @@ function Endpoints(props) {
                         )}
                         {(api.subtypeConfiguration?.subtype !== 'AIAPI' && !isMCPServer) && (
                             <div>
-                                <Grid container>
-                                    <Grid item xs={12} className={classes.endpointsContainer}>
-                                        <EndpointOverview
-                                            swaggerDef={swagger}
-                                            updateSwagger={changeSwagger}
-                                            api={apiObject}
-                                            onChangeAPI={apiDispatcher}
-                                            endpointsDispatcher={apiDispatcher}
-                                            saveAndRedirect={saveAndRedirect}
-                                            sandBoxBackendList={sandBoxBackendList}
-                                            setSandBoxBackendList={setSandBoxBackendList}
-                                            productionBackendList={productionBackendList}
-                                            setProductionBackendList={setProductionBackendList}
-                                            isValidSequenceBackend={isValidSequenceBackend}
-                                            setIsValidSequenceBackend={setIsValidSequenceBackend}
-                                            isCustomBackendSelected={isCustomBackendSelected}
-                                            setIsCustomBackendSelected={setIsCustomBackendSelected}
-                                            componentValidator={componentValidator}
-                                            endpointSecurityTypes={endpointSecurityTypes}
-                                        />
-                                    </Grid>
-                                </Grid>
                                 <ResourceEndpointDefinitions
                                     swaggerDef={swagger}
                                     updateSwagger={changeSwagger}
                                     apiObject={apiObject}
                                 />
+                                {globalEpType.key !== 'awslambda'
+                                    && globalEpType.key !== 'sequence_backend'
+                                    && api.type !== 'WS'
+                                    && (
+                                        <Grid
+                                            item
+                                            xs={12}
+                                            sx={{ mt: 2 }}
+                                        >
+                                            <Typography
+                                                variant='h4'
+                                                align='left'
+                                                gutterBottom
+                                            >
+                                                <FormattedMessage
+                                                    id={
+                                                        'Apis.Details.Endpoints'
+                                                        + '.Endpoints'
+                                                        + '.general.config.header'
+                                                    }
+                                                    defaultMessage={
+                                                        'General Endpoint '
+                                                        + 'Configurations'
+                                                    }
+                                                />
+                                            </Typography>
+                                            <GeneralConfiguration
+                                                epConfig={
+                                                    cloneDeep(epConfig)
+                                                }
+                                                endpointType={globalEpType}
+                                            />
+                                        </Grid>
+                                    )}
+                                {globalEpType.key !== 'default'
+                                    && globalEpType.key
+                                        !== 'sequence_backend'
+                                    && api.type !== 'WS'
+                                    && globalEpType.key !== 'awslambda'
+                                    && globalEpType.key !== 'service'
+                                    && componentValidator.includes(
+                                        'loadBalanceAndFailoverConfigurations',
+                                    )
+                                    && (
+                                        <Grid
+                                            item
+                                            xs={12}
+                                            sx={{ mt: 2 }}
+                                        >
+                                            <Typography
+                                                variant='h4'
+                                                align='left'
+                                                gutterBottom
+                                            >
+                                                <FormattedMessage
+                                                    id={
+                                                        'Apis.Details.Endpoints'
+                                                        + '.Endpoints'
+                                                        + '.lb.failover.header'
+                                                    }
+                                                    defaultMessage={
+                                                        'Load balance and '
+                                                        + 'Failover '
+                                                        + 'Configurations'
+                                                    }
+                                                />
+                                            </Typography>
+                                            <LoadbalanceFailoverConfig
+                                                handleEndpointCategorySelect={
+                                                    handleEndpointCategorySelect
+                                                }
+                                                toggleAdvanceConfig={
+                                                    toggleAdvanceConfig
+                                                }
+                                                toggleESConfig={
+                                                    toggleEndpointSecurityConfig
+                                                }
+                                                endpointsDispatcher={
+                                                    apiDispatcher
+                                                }
+                                                epConfig={
+                                                    cloneDeep(epConfig)
+                                                }
+                                                endpointSecurityInfo={
+                                                    endpointSecurityInfo
+                                                }
+                                                globalEpType={globalEpType}
+                                                apiType={api.type}
+                                                componentValidator={
+                                                    componentValidator
+                                                }
+                                            />
+                                        </Grid>
+                                    )}
                                 {
                                     endpointValidity.isValid
                                         ? <div />
@@ -917,6 +1187,132 @@ function Endpoints(props) {
                                         </Button>
                                     </Grid>
                                 </Grid>
+                                {componentValidator.includes(
+                                    'advancedConfigurations',
+                                ) && (
+                                    <Dialog
+                                        open={
+                                            advanceConfigOptions.open
+                                        }
+                                        maxWidth='md'
+                                        fullWidth
+                                    >
+                                        <DialogTitle>
+                                            <Typography
+                                                sx={{
+                                                    fontWeight: 600,
+                                                }}
+                                            >
+                                                <FormattedMessage
+                                                    id={
+                                                        'Apis.Details'
+                                                        + '.Endpoints'
+                                                        + '.Endpoints'
+                                                        + '.advance'
+                                                        + '.config'
+                                                    }
+                                                    defaultMessage={
+                                                        'Advanced '
+                                                        + 'Configurations'
+                                                    }
+                                                />
+                                            </Typography>
+                                        </DialogTitle>
+                                        <DialogContent>
+                                            <AdvanceEndpointConfig
+                                                isSOAPEndpoint={
+                                                    globalEpType.key
+                                                    === 'address'
+                                                }
+                                                advanceConfig={
+                                                    advanceConfigOptions
+                                                        .config
+                                                }
+                                                onSaveAdvanceConfig={
+                                                    saveAdvanceConfig
+                                                }
+                                                onCancel={
+                                                    closeAdvanceConfig
+                                                }
+                                            />
+                                        </DialogContent>
+                                    </Dialog>
+                                )}
+                                {endpointSecurityTypes
+                                    && endpointSecurityTypes.length > 0
+                                    && (
+                                        <Dialog
+                                            open={
+                                                endpointSecurityConfig.open
+                                            }
+                                            maxWidth='md'
+                                            fullWidth
+                                        >
+                                            <DialogTitle>
+                                                <Typography
+                                                    sx={{
+                                                        fontWeight: 600,
+                                                    }}
+                                                >
+                                                    <FormattedMessage
+                                                        id={
+                                                            'Apis.Details'
+                                                            + '.Endpoints'
+                                                            + '.Endpoints'
+                                                            + '.security'
+                                                            + '.config'
+                                                        }
+                                                        defaultMessage={
+                                                            'Endpoint Security'
+                                                            + ' Configurations'
+                                                        }
+                                                    />
+                                                </Typography>
+                                            </DialogTitle>
+                                            <DialogContent>
+                                                {endpointSecurityConfig
+                                                    .category
+                                                    === 'production' ? (
+                                                        <EndpointSecurity
+                                                            securityInfo={
+                                                                endpointSecurityInfo
+                                                                && (endpointSecurityInfo
+                                                                    .production
+                                                                || endpointSecurityInfo)
+                                                            }
+                                                            saveEndpointSecurityConfig={
+                                                                saveEndpointSecurityConfig
+                                                            }
+                                                            closeEndpointSecurityConfig={
+                                                                closeEndpointSecurityConfig
+                                                            }
+                                                            isProduction
+                                                            endpointSecurityTypes={
+                                                                endpointSecurityTypes
+                                                            }
+                                                        />
+                                                    ) : (
+                                                        <EndpointSecurity
+                                                            securityInfo={
+                                                                endpointSecurityInfo
+                                                                && (endpointSecurityInfo
+                                                                    .sandbox
+                                                                || endpointSecurityInfo)
+                                                            }
+                                                            saveEndpointSecurityConfig={
+                                                                saveEndpointSecurityConfig
+                                                            }
+                                                            closeEndpointSecurityConfig={
+                                                                closeEndpointSecurityConfig
+                                                            }
+                                                            endpointSecurityTypes={
+                                                                endpointSecurityTypes
+                                                            }
+                                                        />
+                                                    )}
+                                            </DialogContent>
+                                        </Dialog>
+                                    )}
                             </div>
                         )}
                     </div>
