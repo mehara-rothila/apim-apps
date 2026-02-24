@@ -3,8 +3,8 @@
  *
  * WSO2 LLC. licenses this file to you under the Apache License,
  * Version 2.0 (the "License"); you may not use this file except
- * in compliance with the License.
- * You may obtain a copy of the License at
+ * in compliance with the License. You may obtain a copy of the
+ * License at
  *
  * http://www.apache.org/licenses/LICENSE-2.0
  *
@@ -30,18 +30,17 @@ import AddCircle from '@mui/icons-material/AddCircle';
 import { FormattedMessage } from 'react-intl';
 import { isRestricted } from 'AppData/AuthManager';
 import ResourceEndpointCard from './ResourceEndpointCard';
-import AddEditResourceEndpoint
-    from './AddEditResourceEndpoint';
+import AddEditResourceEndpoint from './AddEditResourceEndpoint';
 
 const DEFS_KEY = 'x-wso2-resource-endpoint-definitions';
 const REF_KEY = 'x-wso2-resource-endpoint-ref';
+const PRIMARY_KEY = 'x-wso2-primary-endpoint-ref';
 const HTTP_METHODS = [
     'get', 'post', 'put', 'delete',
     'patch', 'head', 'options',
 ];
 
-const MSG_PREFIX = 'Apis.Details.Endpoints'
-    + '.ResourceEndpointDefinitions';
+const MSG_PREFIX = 'Apis.Details.Endpoints.ResourceEndpointDefinitions';
 
 /**
  * Generate a unique ID for a definition.
@@ -89,9 +88,7 @@ function isReferenced(paths, defId) {
  * @param {object} props Component props
  * @returns {JSX.Element} Definitions section
  */
-export default function ResourceEndpointDefinitions(
-    props,
-) {
+export default function ResourceEndpointDefinitions(props) {
     const {
         swaggerDef,
         updateSwagger,
@@ -99,32 +96,34 @@ export default function ResourceEndpointDefinitions(
     } = props;
 
     const definitions = swaggerDef[DEFS_KEY] || [];
+    const primaryId = swaggerDef[PRIMARY_KEY] || null;
 
-    const [addEditOpen, setAddEditOpen]
-        = useState(false);
-    const [editingDef, setEditingDef]
-        = useState(null);
-    const [confirmDeleteOpen, setConfirmDeleteOpen]
-        = useState(false);
-    const [selectedDef, setSelectedDef]
-        = useState(null);
+    const [addEditOpen, setAddEditOpen] = useState(false);
+    const [editingDef, setEditingDef] = useState(null);
+    const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+    const [selectedDef, setSelectedDef] = useState(null);
 
     const handleAdd = (newDef) => {
+        const newId = generateId();
         const updatedDefs = [
             ...definitions,
-            { ...newDef, id: generateId() },
+            { ...newDef, id: newId },
         ];
-        updateSwagger({
+        const updatedSwagger = {
             ...swaggerDef,
             [DEFS_KEY]: updatedDefs,
-        });
+        };
+        // If this is the first definition, set it as primary
+        if (definitions.length === 0) {
+            updatedSwagger[PRIMARY_KEY] = newId;
+        }
+        updateSwagger(updatedSwagger);
         setAddEditOpen(false);
     };
 
     const handleEdit = (updatedDef) => {
         const updatedDefs = definitions.map(
-            (d) => (d.id === updatedDef.id
-                ? updatedDef : d),
+            (d) => (d.id === updatedDef.id ? updatedDef : d),
         );
         updateSwagger({
             ...swaggerDef,
@@ -139,12 +138,32 @@ export default function ResourceEndpointDefinitions(
         const updatedDefs = definitions.filter(
             (d) => d.id !== selectedDef.id,
         );
-        updateSwagger({
+        const updatedSwagger = {
             ...swaggerDef,
             [DEFS_KEY]: updatedDefs,
-        });
+        };
+        // If deleting the primary, set first remaining as primary
+        if (primaryId === selectedDef.id && updatedDefs.length > 0) {
+            updatedSwagger[PRIMARY_KEY] = updatedDefs[0].id;
+        } else if (updatedDefs.length === 0) {
+            delete updatedSwagger[PRIMARY_KEY];
+        }
+        updateSwagger(updatedSwagger);
         setConfirmDeleteOpen(false);
         setSelectedDef(null);
+    };
+
+    const handleSetPrimary = (def) => {
+        updateSwagger({
+            ...swaggerDef,
+            [PRIMARY_KEY]: def.id,
+        });
+    };
+
+    const handleRemovePrimary = () => {
+        const updatedSwagger = { ...swaggerDef };
+        delete updatedSwagger[PRIMARY_KEY];
+        updateSwagger(updatedSwagger);
     };
 
     const openEdit = (def) => {
@@ -165,7 +184,7 @@ export default function ResourceEndpointDefinitions(
         <Paper
             elevation={0}
             variant='outlined'
-            sx={{ p: 2, mt: 2 }}
+            sx={{ p: 2, mb: 2 }}
         >
             <Box
                 display='flex'
@@ -173,16 +192,10 @@ export default function ResourceEndpointDefinitions(
                 alignItems='center'
                 mb={2}
             >
-                <Typography
-                    variant='h6'
-                    component='h3'
-                >
+                <Typography variant='h6' component='h3'>
                     <FormattedMessage
                         id={MSG_PREFIX + '.title'}
-                        defaultMessage={
-                            'Resource Endpoint'
-                            + ' Definitions'
-                        }
+                        defaultMessage='Endpoint Definitions'
                     />
                 </Typography>
                 <Button
@@ -190,19 +203,11 @@ export default function ResourceEndpointDefinitions(
                     color='primary'
                     size='small'
                     disabled={restricted}
-                    onClick={
-                        () => setAddEditOpen(true)
-                    }
+                    onClick={() => setAddEditOpen(true)}
                 >
-                    <AddCircle
-                        sx={{ mr: 0.5 }}
-                        fontSize='small'
-                    />
+                    <AddCircle sx={{ mr: 0.5 }} fontSize='small' />
                     <FormattedMessage
-                        id={
-                            MSG_PREFIX
-                            + '.addDefinition'
-                        }
+                        id={MSG_PREFIX + '.addDefinition'}
                         defaultMessage='Add Definition'
                     />
                 </Button>
@@ -215,13 +220,8 @@ export default function ResourceEndpointDefinitions(
             >
                 <FormattedMessage
                     id={MSG_PREFIX + '.description'}
-                    defaultMessage={
-                        'Create named endpoint'
-                        + ' definitions here, then'
-                        + ' assign them to individual'
-                        + ' resources on the Resources'
-                        + ' page.'
-                    }
+                    defaultMessage={'Create endpoint definitions here, then assign them'
+                        + ' to individual API resources on the Resources page.'}
                 />
             </Typography>
 
@@ -232,33 +232,22 @@ export default function ResourceEndpointDefinitions(
                         definition={def}
                         onEdit={openEdit}
                         onDelete={openDelete}
-                        isReferenced={
-                            isReferenced(
-                                swaggerDef.paths,
-                                def.id,
-                            )
-                        }
+                        isReferenced={isReferenced(swaggerDef.paths, def.id)}
+                        isPrimary={primaryId === def.id}
+                        onSetPrimary={handleSetPrimary}
+                        onRemovePrimary={handleRemovePrimary}
+                        apiObject={apiObject}
                     />
                 ))
                 : (
                     <Typography
                         variant='body1'
                         color='textSecondary'
-                        sx={{
-                            textAlign: 'center',
-                            py: 3,
-                        }}
+                        sx={{ textAlign: 'center', py: 3 }}
                     >
                         <FormattedMessage
-                            id={
-                                MSG_PREFIX
-                                + '.empty'
-                            }
-                            defaultMessage={
-                                'No resource endpoint'
-                                + ' definitions'
-                                + ' configured yet.'
-                            }
+                            id={MSG_PREFIX + '.empty'}
+                            defaultMessage='No endpoint definitions configured yet.'
                         />
                     </Typography>
                 )}
@@ -271,67 +260,34 @@ export default function ResourceEndpointDefinitions(
                     setEditingDef(null);
                 }}
                 definition={editingDef}
-                existingNames={
-                    definitions.map((d) => d.name)
-                }
-                onSave={
-                    editingDef
-                        ? handleEdit
-                        : handleAdd
-                }
+                existingNames={definitions.map((d) => d.name)}
+                onSave={editingDef ? handleEdit : handleAdd}
             />
 
             {/* Delete Confirmation Dialog */}
             <Dialog
                 open={confirmDeleteOpen}
-                onClose={
-                    () => setConfirmDeleteOpen(false)
-                }
+                onClose={() => setConfirmDeleteOpen(false)}
             >
                 <DialogTitle>
                     <FormattedMessage
-                        id={
-                            MSG_PREFIX
-                            + '.confirmDelete'
-                        }
-                        defaultMessage={
-                            'Delete Endpoint'
-                            + ' Definition'
-                        }
+                        id={MSG_PREFIX + '.confirmDelete'}
+                        defaultMessage='Delete Endpoint Definition'
                     />
                 </DialogTitle>
                 <DialogContent>
                     <Typography>
                         <FormattedMessage
-                            id={
-                                MSG_PREFIX
-                                + '.deleteMsg'
-                            }
-                            defaultMessage={
-                                'Are you sure you'
-                                + ' want to delete'
-                                + ' "{name}"?'
-                            }
-                            values={{
-                                name: selectedDef
-                                    ?.name || '',
-                            }}
+                            id={MSG_PREFIX + '.deleteMsg'}
+                            defaultMessage='Are you sure you want to delete "{name}"?'
+                            values={{ name: selectedDef?.name || '' }}
                         />
                     </Typography>
                 </DialogContent>
                 <DialogActions>
-                    <Button
-                        onClick={
-                            () => setConfirmDeleteOpen(
-                                false,
-                            )
-                        }
-                    >
+                    <Button onClick={() => setConfirmDeleteOpen(false)}>
                         <FormattedMessage
-                            id={
-                                MSG_PREFIX
-                                + '.cancelDelete'
-                            }
+                            id={MSG_PREFIX + '.cancelDelete'}
                             defaultMessage='Cancel'
                         />
                     </Button>
@@ -341,10 +297,7 @@ export default function ResourceEndpointDefinitions(
                         onClick={handleDelete}
                     >
                         <FormattedMessage
-                            id={
-                                MSG_PREFIX
-                                + '.delete'
-                            }
+                            id={MSG_PREFIX + '.delete'}
                             defaultMessage='Delete'
                         />
                     </Button>

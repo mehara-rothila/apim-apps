@@ -23,14 +23,62 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
+import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import { FormattedMessage } from 'react-intl';
 
 const DEFS_KEY = 'x-wso2-resource-endpoint-definitions';
 const REF_KEY = 'x-wso2-resource-endpoint-ref';
+const PRIMARY_KEY = 'x-wso2-primary-endpoint-ref';
 
 const MSG_PREFIX = 'Apis.Details.Resources.components'
     + '.operationComponents.ResourceEndpointSelector';
+
+/**
+ * Get primary URL display from a definition, handling HTTP, Load Balance, and Failover types.
+ *
+ * @param {object} def Endpoint definition
+ * @param {string} category 'production' or 'sandbox'
+ * @returns {string} Display URL or empty string
+ */
+function getDisplayUrl(def, category) {
+    if (!def) return '';
+    const epType = def.endpoint_type || 'http';
+    if (category === 'production') {
+        if (epType === 'load_balance') {
+            const eps = def.production_endpoints;
+            if (Array.isArray(eps) && eps.length > 0) {
+                const count = eps.filter((e) => e.url).length;
+                return eps[0]?.url ? (eps[0].url + (count > 1 ? ' (+' + (count - 1) + ' more)' : '')) : '';
+            }
+            return '';
+        }
+        return def.production_endpoints?.url || '';
+    }
+    if (epType === 'load_balance') {
+        const eps = def.sandbox_endpoints;
+        if (Array.isArray(eps) && eps.length > 0) {
+            const count = eps.filter((e) => e.url).length;
+            return eps[0]?.url ? (eps[0].url + (count > 1 ? ' (+' + (count - 1) + ' more)' : '')) : '';
+        }
+        return '';
+    }
+    return def.sandbox_endpoints?.url || '';
+}
+
+/**
+ * Get endpoint type label.
+ *
+ * @param {string} epType Endpoint type
+ * @returns {string} Label
+ */
+function getTypeLabel(epType) {
+    switch (epType) {
+        case 'load_balance': return 'LB';
+        case 'failover': return 'FO';
+        default: return '';
+    }
+}
 
 /**
  * Dropdown for assigning a resource endpoint
@@ -40,9 +88,7 @@ const MSG_PREFIX = 'Apis.Details.Resources.components'
  * @param {object} props Component props
  * @returns {JSX.Element} Selector component
  */
-export default function ResourceEndpointSelector(
-    props,
-) {
+export default function ResourceEndpointSelector(props) {
     const {
         operation,
         operationsDispatcher,
@@ -53,11 +99,11 @@ export default function ResourceEndpointSelector(
     } = props;
 
     const definitions = spec[DEFS_KEY] || [];
+    const primaryId = spec[PRIMARY_KEY] || null;
     const currentRef = operation[REF_KEY] || '';
 
-    const selectedDef = definitions.find(
-        (d) => d.id === currentRef,
-    );
+    const selectedDef = definitions.find((d) => d.id === currentRef);
+    const primaryDef = definitions.find((d) => d.id === primaryId);
 
     const handleChange = (event) => {
         const { value } = event.target;
@@ -74,13 +120,10 @@ export default function ResourceEndpointSelector(
     return (
         <>
             <Grid item md={12} xs={12}>
-                <Typography
-                    gutterBottom
-                    variant='subtitle1'
-                >
+                <Typography gutterBottom variant='subtitle1'>
                     <FormattedMessage
                         id={MSG_PREFIX + '.title'}
-                        defaultMessage='Resource Endpoint'
+                        defaultMessage='Endpoint'
                     />
                     <Typography
                         sx={{ ml: 1 }}
@@ -88,16 +131,8 @@ export default function ResourceEndpointSelector(
                         variant='caption'
                     >
                         <FormattedMessage
-                            id={
-                                MSG_PREFIX
-                                + '.subtitle'
-                            }
-                            defaultMessage={
-                                'Override the'
-                                + ' API-level'
-                                + ' endpoint for'
-                                + ' this operation'
-                            }
+                            id={MSG_PREFIX + '.subtitle'}
+                            defaultMessage='Assign an endpoint definition to this operation'
                         />
                     </Typography>
                     <Divider variant='middle' />
@@ -110,52 +145,26 @@ export default function ResourceEndpointSelector(
                     fullWidth
                     label={(
                         <FormattedMessage
-                            id={
-                                MSG_PREFIX
-                                + '.label'
-                            }
-                            defaultMessage='Resource Endpoint'
+                            id={MSG_PREFIX + '.label'}
+                            defaultMessage='Endpoint'
                         />
                     )}
                     value={currentRef}
                     onChange={handleChange}
-                    disabled={
-                        disableUpdate
-                        || definitions.length === 0
-                    }
+                    disabled={disableUpdate || definitions.length === 0}
                     helperText={
                         definitions.length === 0
                             ? (
                                 <FormattedMessage
-                                    id={
-                                        MSG_PREFIX
-                                        + '.noDefs'
-                                    }
-                                    defaultMessage={
-                                        'No resource'
-                                        + ' endpoint'
-                                        + ' definitions'
-                                        + ' found. Create'
-                                        + ' them on the'
-                                        + ' Endpoints page'
-                                        + ' first.'
-                                    }
+                                    id={MSG_PREFIX + '.noDefs'}
+                                    defaultMessage={'No endpoint definitions found.'
+                                        + ' Create them on the Endpoints page first.'}
                                 />
                             )
                             : (
                                 <FormattedMessage
-                                    id={
-                                        MSG_PREFIX
-                                        + '.hint'
-                                    }
-                                    defaultMessage={
-                                        'Select an'
-                                        + ' endpoint'
-                                        + ' definition to'
-                                        + ' override the'
-                                        + ' API-level'
-                                        + ' endpoint'
-                                    }
+                                    id={MSG_PREFIX + '.hint'}
+                                    defaultMessage='Select an endpoint definition to assign to this operation'
                                 />
                             )
                     }
@@ -166,79 +175,76 @@ export default function ResourceEndpointSelector(
                     <MenuItem value=''>
                         <em>
                             <FormattedMessage
-                                id={
-                                    MSG_PREFIX
-                                    + '.default'
-                                }
-                                defaultMessage={
-                                    'Use API-level'
-                                    + ' endpoint'
-                                    + ' (default)'
-                                }
+                                id={MSG_PREFIX + '.default'}
+                                defaultMessage='Use primary endpoint (default)'
                             />
                         </em>
                     </MenuItem>
-                    {definitions.map((def) => (
-                        <MenuItem
-                            key={def.id}
-                            value={def.id}
-                        >
-                            {def.name}
-                        </MenuItem>
-                    ))}
+                    {definitions.map((def) => {
+                        const typeLabel = getTypeLabel(def.endpoint_type);
+                        return (
+                            <MenuItem key={def.id} value={def.id}>
+                                {def.name}
+                                {def.id === primaryId && (
+                                    <Chip
+                                        label='Primary'
+                                        size='small'
+                                        color='primary'
+                                        sx={{ ml: 1, height: 20, fontSize: '0.7rem' }}
+                                    />
+                                )}
+                                {typeLabel && (
+                                    <Chip
+                                        label={typeLabel}
+                                        size='small'
+                                        variant='outlined'
+                                        sx={{ ml: 0.5, height: 20, fontSize: '0.7rem' }}
+                                    />
+                                )}
+                            </MenuItem>
+                        );
+                    })}
                 </TextField>
             </Grid>
             <Grid item md={5} xs={5}>
-                {selectedDef && (
+                {(selectedDef || (!currentRef && primaryDef)) && (
                     <Box sx={{ ml: 2, mt: 1 }}>
-                        <Typography
-                            variant='body2'
-                            color='textSecondary'
-                        >
+                        {!currentRef && primaryDef && (
+                            <Typography variant='caption' color='primary' sx={{ mb: 0.5, display: 'block' }}>
+                                <FormattedMessage
+                                    id={MSG_PREFIX + '.usingPrimary'}
+                                    defaultMessage='Using primary endpoint'
+                                />
+                                {': '}
+                                {primaryDef.name}
+                            </Typography>
+                        )}
+                        <Typography variant='body2' color='textSecondary'>
                             <strong>
                                 <FormattedMessage
-                                    id={
-                                        MSG_PREFIX
-                                        + '.prod'
-                                    }
+                                    id={MSG_PREFIX + '.prod'}
                                     defaultMessage='Production:'
                                 />
                             </strong>
                             {' '}
-                            {selectedDef
-                                .production_endpoints
-                                ?.url || (
+                            {getDisplayUrl(selectedDef || primaryDef, 'production') || (
                                 <FormattedMessage
-                                    id={
-                                        MSG_PREFIX
-                                        + '.notSet'
-                                    }
+                                    id={MSG_PREFIX + '.notSet'}
                                     defaultMessage='Not set'
                                 />
                             )}
                         </Typography>
-                        <Typography
-                            variant='body2'
-                            color='textSecondary'
-                        >
+                        <Typography variant='body2' color='textSecondary'>
                             <strong>
                                 <FormattedMessage
-                                    id={
-                                        MSG_PREFIX
-                                        + '.sand'
-                                    }
+                                    id={MSG_PREFIX + '.sand'}
                                     defaultMessage='Sandbox:'
                                 />
                             </strong>
                             {' '}
-                            {selectedDef
-                                .sandbox_endpoints
-                                ?.url || (
+                            {getDisplayUrl(selectedDef || primaryDef, 'sandbox') || (
                                 <FormattedMessage
-                                    id={
-                                        MSG_PREFIX
-                                        + '.notSet2'
-                                    }
+                                    id={MSG_PREFIX + '.notSet2'}
                                     defaultMessage='Not set'
                                 />
                             )}
