@@ -48,7 +48,7 @@ const classes = {
 
 const Root = styled('div')(({ theme }) => ({
     [`& .${classes.formControl}`]: {
-        width: '500px',
+        width: '100%',
     },
     [`& .${classes.subTitle}`]: {
         fontSize: '1rem',
@@ -60,7 +60,7 @@ const Root = styled('div')(({ theme }) => ({
     },
     [`& .${classes.textField}`]: {
         marginRight: theme.spacing(1),
-        width: '45%',
+        width: 'calc(50% - 8px)',
     },
     [`& .${classes.advanceDialogActions}`]: {
         display: 'flex',
