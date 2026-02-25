@@ -39,6 +39,7 @@ import { FormattedMessage } from 'react-intl';
 import DescriptionAndSummary from './operationComponents/DescriptionAndSummary';
 import OperationGovernance from './operationComponents/OperationGovernance';
 import AWSLambdaSettings from './operationComponents/AWSLambdaSettings';
+import ResourceEndpointSelector from './operationComponents/ResourceEndpointSelector';
 import Parameters from './operationComponents/Parameters';
 import SOAPToRESTListing from './operationComponents/SOAPToREST/SOAPToRESTListing';
 import { getOperationScopes } from '../operationUtils';
@@ -138,6 +139,8 @@ function Operation(props) {
     const isUsedInAPIProduct = apiOperation && Array.isArray(
         apiOperation.usedProductIds,
     ) && apiOperation.usedProductIds.length;
+    const showResourceEndpointSelector = api.subtypeConfiguration?.subtype !== 'AIAPI'
+        && (!api.endpointConfig || api.endpointConfig.endpoint_type !== 'awslambda');
 
     /**
      *
@@ -345,6 +348,17 @@ function Operation(props) {
                             setFocusOperationLevel={setFocusOperationLevel}
                             componentValidator={componentValidator}
                         />
+                        {showResourceEndpointSelector && (
+                            <ResourceEndpointSelector
+                                operation={operation}
+                                operationsDispatcher={operationsDispatcher}
+                                target={target}
+                                verb={verb}
+                                spec={spec}
+                                api={api}
+                                disableUpdate={disableUpdate}
+                            />
+                        )}
                         {!hideParameters && (
                             <Parameters
                                 operation={operation}
