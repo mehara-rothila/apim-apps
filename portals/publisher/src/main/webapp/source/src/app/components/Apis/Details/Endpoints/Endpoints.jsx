@@ -36,6 +36,7 @@ import { getBasePath } from 'AppComponents/Shared/Utils';
 import MCPServerEndpoints from 'AppComponents/MCPServers/Details/Endpoints/Endpoints';
 import EndpointOverview from './EndpointOverview';
 import AIEndpoints from './AIEndpoints/AIEndpoints';
+import ResourceEndpointDefinitions from './ResourceEndpoints/ResourceEndpointDefinitions';
 import { createEndpointConfig, getEndpointTemplateByType } from './endpointUtils';
 import { API_SECURITY_KEY_TYPE_PRODUCTION, 
     API_SECURITY_KEY_TYPE_SANDBOX } from '../Configuration/components/APISecurity/components/apiSecurityConstants';
@@ -816,8 +817,13 @@ function Endpoints(props) {
                         )}
                         {(api.subtypeConfiguration?.subtype !== 'AIAPI' && !isMCPServer) && (
                             <div>
+                                <ResourceEndpointDefinitions
+                                    swaggerDef={swagger}
+                                    updateSwagger={changeSwagger}
+                                    apiObject={apiObject}
+                                />
                                 <Grid container>
-                                    <Grid item xs={12} className={classes.endpointsContainer}>
+                                    <Grid item xs={12}>
                                         <EndpointOverview
                                             swaggerDef={swagger}
                                             updateSwagger={changeSwagger}
@@ -885,15 +891,14 @@ function Endpoints(props) {
                                             )}
                                     </Grid>
                                     <Grid item>
-                                        <Button
-                                            component={Link}
-                                            to={getBasePath(api.apiType) + api.id + '/overview'}
-                                        >
-                                            <FormattedMessage
-                                                id='Apis.Details.Endpoints.Endpoints.cancel'
-                                                defaultMessage='Cancel'
-                                            />
-                                        </Button>
+                                        <Link to={getBasePath(api.apiType) + api.id + '/overview'}>
+                                            <Button>
+                                                <FormattedMessage
+                                                    id='Apis.Details.Endpoints.Endpoints.cancel'
+                                                    defaultMessage='Cancel'
+                                                />
+                                            </Button>
+                                        </Link>
                                     </Grid>
                                 </Grid>
                             </div>

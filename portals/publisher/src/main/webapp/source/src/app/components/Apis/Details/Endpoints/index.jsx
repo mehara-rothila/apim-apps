@@ -28,6 +28,7 @@ import API from 'AppData/api';
 import AddEditEndpoint from 'AppComponents/MCPServers/Details/Endpoints/AddEditEndpoint';
 import Endpoints from './Endpoints';
 import AddEditAIEndpoint from './AIEndpoints/AddEditAIEndpoint';
+import AddEditResourceEndpoint from './ResourceEndpoints/AddEditResourceEndpoint';
 
 const Endpoint = () => {
     const [api] = useAPI();
@@ -61,7 +62,9 @@ const Endpoint = () => {
                     />
                 )}
             />
-            {!isRestricted(['apim:api_create']) && !isMCPServer && (
+            {/* AI API endpoint routes */}
+            {!isRestricted(['apim:api_create']) && !isMCPServer
+                && api.subtypeConfiguration?.subtype === 'AIAPI' && (
                 <Route
                     exact
                     path={urlPrefix + ':api_uuid/endpoints/create'}
@@ -74,7 +77,8 @@ const Endpoint = () => {
                     )}
                 />
             )}
-            {!isRestricted(['apim:api_view', 'apim:api_create']) && !isMCPServer && (
+            {!isRestricted(['apim:api_view', 'apim:api_create']) && !isMCPServer
+                && api.subtypeConfiguration?.subtype === 'AIAPI' && (
                 <Route
                     exact
                     path={urlPrefix + ':api_uuid/endpoints/:id'}
@@ -82,6 +86,31 @@ const Endpoint = () => {
                         <AddEditAIEndpoint
                             apiObject={api}
                             llmProviderEndpointConfiguration={llmProviderEndpointConfiguration}
+                            {...props}
+                        />
+                    )}
+                />
+            )}
+            {/* Resource endpoint routes (non-AI APIs) */}
+            {!isRestricted(['apim:api_create']) && !isMCPServer
+                && api.subtypeConfiguration?.subtype !== 'AIAPI' && (
+                <Route
+                    exact
+                    path={urlPrefix + ':api_uuid/endpoints/create'}
+                    render={(props) => (
+                        <AddEditResourceEndpoint
+                            {...props}
+                        />
+                    )}
+                />
+            )}
+            {!isRestricted(['apim:api_view', 'apim:api_create']) && !isMCPServer
+                && api.subtypeConfiguration?.subtype !== 'AIAPI' && (
+                <Route
+                    exact
+                    path={urlPrefix + ':api_uuid/endpoints/:id'}
+                    render={(props) => (
+                        <AddEditResourceEndpoint
                             {...props}
                         />
                     )}

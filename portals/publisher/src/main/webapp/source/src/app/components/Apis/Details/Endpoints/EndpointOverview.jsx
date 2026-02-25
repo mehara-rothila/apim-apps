@@ -774,6 +774,7 @@ function EndpointOverview(props) {
     return (
         <Root className={classes.overviewWrapper}>
             <Grid container spacing={2}>
+                {api.subtypeConfiguration?.subtype === 'AIAPI' && (
                 <Grid item xs={12}>
                     <FormControl component='fieldset' className={classes.formControl}>
                         <RadioGroup
@@ -801,6 +802,7 @@ function EndpointOverview(props) {
                         </RadioGroup>
                     </FormControl>
                 </Grid>
+                )}
                 <Grid item xs={12}>
                     {(endpointType.key === 'INLINE' || endpointType.key === 'MOCKED_OAS') ? 
                         iff(Object.keys(swaggerDef.paths).length !== 0, 
@@ -814,7 +816,9 @@ function EndpointOverview(props) {
                                 endpointsDispatcher={endpointsDispatcher}
                             />, 
                             <Progress />)
-                        : (
+                        : (endpointType.key !== 'http'
+                            && endpointType.key !== 'address'
+                            && (
                             <Paper className={classes.endpointContainer}>
 
                                 {endpointType.key === 'service'
@@ -1292,10 +1296,11 @@ function EndpointOverview(props) {
                                         </>
                                     )}
                             </Paper>
-                        )}
+                        ))}
                 </Grid>
-                {endpointType.key === 'INLINE' || endpointType.key === 'MOCKED_OAS' || 
+                {endpointType.key === 'INLINE' || endpointType.key === 'MOCKED_OAS' ||
                     endpointType.key === 'prototyped' || endpointType.key === 'awslambda' || api.type === 'WS' || endpointType.key === 'sequence_backend'
+                    || (api.subtypeConfiguration?.subtype !== 'AIAPI')
                     ? <div />
                     : (
                         <Grid item xs={12}>
