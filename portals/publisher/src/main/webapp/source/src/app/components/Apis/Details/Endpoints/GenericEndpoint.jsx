@@ -198,17 +198,11 @@ function GenericEndpoint(props) {
                             )}
                             {!api.isWebSocket() && (
                                 <IconButton
-                                    className={isEndpointValid
-                                        ? classes.iconButtonValid
-                                        : classes.iconButton}
+                                    className={isEndpointValid ? classes.iconButtonValid : classes.iconButton}
                                     aria-label='TestEndpoint'
-                                    onClick={() => testEndpoint(
-                                        serviceUrl, apiId)}
-                                    disabled={(isRestricted(
-                                        ['apim:api_create'], api))
-                                        || isUpdating}
-                                    id={category
-                                        + '-endpoint-test-icon-btn'}
+                                    onClick={() => testEndpoint(serviceUrl, apiId)}
+                                    disabled={(isRestricted(['apim:api_create'], api)) || isUpdating}
+                                    id={category + '-endpoint-test-icon-btn'}
                                     size='large'>
                                     {isUpdating
                                         ? <CircularProgress size={20} />
@@ -218,10 +212,7 @@ function GenericEndpoint(props) {
                                                 interactive
                                                 title={(
                                                     <FormattedMessage
-                                                        id={'Apis.Details'
-                                                            + '.Endpoints'
-                                                            + '.GenericEndpoint'
-                                                            + '.check.endpoint'}
+                                                        id='Apis.Details.Endpoints.GenericEndpoint.check.endpoint'
                                                         defaultMessage='Check endpoint status'
                                                     />
                                                 )}
@@ -238,38 +229,20 @@ function GenericEndpoint(props) {
                                 ? <div />
                                 : (
                                     <>
-                                        {componentValidator.includes(
-                                            'advancedConfigurations',
-                                        ) && (
+                                        {componentValidator.includes('advancedConfigurations') &&
                                             <IconButton
-                                                className={
-                                                    classes.iconButton}
+                                                className={classes.iconButton}
                                                 aria-label='Settings'
-                                                onClick={
-                                                    () => setAdvancedConfigOpen(
-                                                        index,
-                                                        type,
-                                                        category,
-                                                    )}
-                                                disabled={(isRestricted(
-                                                    ['apim:api_create'],
-                                                    api))}
-                                                id={category
-                                                    + '-endpoint-'
-                                                    + 'configuration'
-                                                    + '-icon-btn'}
+                                                onClick={() => setAdvancedConfigOpen(index, type, category)}
+                                                disabled={(isRestricted(['apim:api_create'], api))}
+                                                id={category + '-endpoint-configuration-icon-btn'}
                                                 size='large'>
                                                 <Tooltip
                                                     placement='top-start'
                                                     interactive
                                                     title={(
                                                         <FormattedMessage
-                                                            id={'Apis'
-                                                                + '.Details'
-                                                                + '.Endpoints'
-                                                                + '.GenericEndpoint'
-                                                                + '.config'
-                                                                + '.endpoint'}
+                                                            id='Apis.Details.Endpoints.GenericEndpoint.config.endpoint'
                                                             defaultMessage='Endpoint configurations'
                                                         />
                                                     )}
@@ -279,91 +252,29 @@ function GenericEndpoint(props) {
                                                     </Icon>
                                                 </Tooltip>
                                             </IconButton>
-                                        )}
-                                        {showIcons && setESConfigOpen
-                                            ? (
-                                                <IconButton
-                                                    className={
-                                                        classes.iconButton}
-                                                    aria-label='Security'
-                                                    onClick={
-                                                        () => setESConfigOpen(
-                                                            type,
-                                                            esCategory,
-                                                        )}
-                                                    disabled={(
-                                                        isRestricted(
-                                                            ['apim:api_create'],
-                                                            api,
-                                                        ))}
-                                                    size='large'>
-                                                    <Tooltip
-                                                        placement='top-start'
-                                                        interactive
-                                                        title={(
-                                                            <FormattedMessage
-                                                                id={'Apis'
-                                                                    + '.Details'
-                                                                    + '.Endpoints'
-                                                                    + '.GenericEndpoint'
-                                                                    + '.security'
-                                                                    + '.endpoint'}
-                                                                defaultMessage='Endpoint Security'
-                                                            />
-                                                        )}
-                                                    >
-                                                        <Icon>
-                                                            security
-                                                        </Icon>
-                                                    </Tooltip>
-                                                </IconButton>
-                                            )
-                                            : (
-                                                api.subtypeConfiguration
-                                                    ?.subtype
-                                                    !== 'AIAPI' && (
-                                                    <IconButton
-                                                        className={
-                                                            classes
-                                                                .iconButton}
-                                                        aria-label='Security'
-                                                        onClick={
-                                                            () => setESConfigOpen(
-                                                                type,
-                                                                esCategory,
-                                                            )}
-                                                        disabled={(
-                                                            isRestricted(
-                                                                ['apim:api_create'],
-                                                                api,
-                                                            ))}
-                                                        id={category
-                                                            + '-endpoint-'
-                                                            + 'security'
-                                                            + '-icon-btn'}
-                                                        size='large'>
-                                                        <Tooltip
-                                                            placement='top-start'
-                                                            interactive
-                                                            title={(
-                                                                <FormattedMessage
-                                                                    id={'Apis'
-                                                                        + '.Details'
-                                                                        + '.Endpoints'
-                                                                        + '.GenericEndpoint'
-                                                                        + '.security'
-                                                                        + '.endpoint'}
-                                                                    defaultMessage='Endpoint security'
-                                                                />
-                                                            )}
-                                                        >
-                                                            <Icon>
-                                                                security
-                                                            </Icon>
-                                                        </Tooltip>
-                                                    </IconButton>
-                                                )
-                                            )}
+                                        }
+                                        {(showIcons || api.subtypeConfiguration?.subtype !== 'AIAPI') && (<IconButton
+                                            className={classes.iconButton}
+                                            aria-label='Security'
+                                            onClick={() => setESConfigOpen(type, esCategory)}
+                                            disabled={(isRestricted(['apim:api_create'], api))}
+                                            id={category + '-endpoint-security-icon-btn'}
+                                            size='large'>
+                                            <Tooltip
+                                                placement='top-start'
+                                                interactive
+                                                title={(
+                                                    <FormattedMessage
+                                                        id='Apis.Details.Endpoints.GenericEndpoint.security.endpoint'
+                                                        defaultMessage='Endpoint security'
+                                                    />
+                                                )}
+                                            >
+                                                <Icon>
+                                                    security
+                                                </Icon>
+                                            </Tooltip>
+                                        </IconButton>)}
                                     </>
                                 )}
                             {(index > 0) ? <Divider className={classes.divider} /> : <div />}

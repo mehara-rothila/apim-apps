@@ -823,7 +823,7 @@ function Endpoints(props) {
                                     apiObject={apiObject}
                                 />
                                 <Grid container>
-                                    <Grid item xs={12}>
+                                    <Grid item xs={12} className={classes.endpointsContainer}>
                                         <EndpointOverview
                                             swaggerDef={swagger}
                                             updateSwagger={changeSwagger}
@@ -891,14 +891,15 @@ function Endpoints(props) {
                                             )}
                                     </Grid>
                                     <Grid item>
-                                        <Link to={getBasePath(api.apiType) + api.id + '/overview'}>
-                                            <Button>
-                                                <FormattedMessage
-                                                    id='Apis.Details.Endpoints.Endpoints.cancel'
-                                                    defaultMessage='Cancel'
-                                                />
-                                            </Button>
-                                        </Link>
+                                        <Button
+                                            component={Link}
+                                            to={getBasePath(api.apiType) + api.id + '/overview'}
+                                        >
+                                            <FormattedMessage
+                                                id='Apis.Details.Endpoints.Endpoints.cancel'
+                                                defaultMessage='Cancel'
+                                            />
+                                        </Button>
                                     </Grid>
                                 </Grid>
                             </div>
