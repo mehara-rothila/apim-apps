@@ -444,9 +444,9 @@ export default function AddEditResourceEndpoint(props) {
                 updatedSwagger[PRIMARY_KEY] = result.id;
             }
 
-            return restApi.updateSwagger(
-                api.id, updatedSwagger,
-            );
+            const apiInstance = new API();
+            apiInstance.id = api.id;
+            return apiInstance.updateSwagger(updatedSwagger);
         }).then(() => {
             Alert.info(
                 isEditing
