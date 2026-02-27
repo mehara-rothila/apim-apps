@@ -345,6 +345,12 @@ function Endpoints(props) {
             if (apiObjectCopy.endpointConfig.endpoint_type === 'service') {
                 apiObjectCopy.endpointConfig.endpoint_type = 'http';
             }
+            // Save swagger too (for resource endpoint definitions)
+            api.updateSwagger(swagger).then((resp) => {
+                setSwagger(resp.obj);
+            }).catch((error) => {
+                console.error('Error saving swagger', error);
+            });
             updateAPI(apiObjectCopy)
                 .catch((error) => {
                     if (error.response) {
@@ -445,6 +451,12 @@ function Endpoints(props) {
             if (apiObjectCopy.endpointConfig.endpoint_type === 'service') {
                 apiObjectCopy.endpointConfig.endpoint_type = 'http';
             }
+            // Save swagger too (for resource endpoint definitions)
+            api.updateSwagger(swagger).then((resp) => {
+                setSwagger(resp.obj);
+            }).catch((error) => {
+                console.error('Error saving swagger', error);
+            });
             updateAPI(apiObjectCopy)
                 .catch((error) => {
                     if (error.response) {

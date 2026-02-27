@@ -196,7 +196,68 @@ export default function ResourceEndpointSelector(props) {
                         <HelpOutline />
                     </Tooltip>
                 </sup>
+                {definitions.length === 0 && (
+                    <Typography
+                        variant='caption'
+                        color='textSecondary'
+                        sx={{ display: 'block', mt: 0.5 }}
+                    >
+                        <FormattedMessage
+                            id={MSG_PREFIX + '.noDefsHelper'}
+                            defaultMessage='No endpoint definitions available.'
+                        />
+                    </Typography>
+                )}
             </Grid>
+
+            {/* Create link (shown when no definitions and toggle is OFF) */}
+            {definitions.length === 0 && !isEnabled && !disableUpdate && (
+                <>
+                    <Grid item md={1} xs={1} />
+                    <Grid item md={7} xs={7} />
+                    <Grid
+                        item
+                        md={3}
+                        xs={3}
+                        style={{ marginTop: '14px' }}
+                    >
+                        <Link
+                            to={
+                                '/apis/'
+                                + api.id
+                                + '/endpoints/create'
+                            }
+                            target='_blank'
+                        >
+                            <Typography
+                                style={{
+                                    marginLeft: '10px',
+                                }}
+                                color='primary'
+                                display='inline'
+                                variant='caption'
+                            >
+                                <FormattedMessage
+                                    id={
+                                        MSG_PREFIX
+                                        + '.createFirst'
+                                    }
+                                    defaultMessage={
+                                        'Create New'
+                                        + ' Endpoint'
+                                    }
+                                />
+                                <LaunchIcon
+                                    style={{
+                                        marginLeft: '2px',
+                                    }}
+                                    fontSize='small'
+                                />
+                            </Typography>
+                        </Link>
+                    </Grid>
+                </>
+            )}
 
             {/* Endpoint selector (shown when toggle is ON) */}
             {isEnabled && (
