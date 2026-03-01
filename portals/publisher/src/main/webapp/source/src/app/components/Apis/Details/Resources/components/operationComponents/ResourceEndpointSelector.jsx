@@ -80,6 +80,36 @@ export default function ResourceEndpointSelector(props) {
     // Toggle is ON when this operation has a custom endpoint ref
     const isEnabled = !!currentRef;
 
+    // Find the selected definition and extract URLs for display
+    const selectedDef = currentRef
+        ? definitions.find((d) => d.id === currentRef) : null;
+    const selectedUrlHint = (() => {
+        if (!selectedDef) return '';
+        const cfg = selectedDef.endpointConfig
+            || selectedDef;
+        const getUrl = (ep) => {
+            if (!ep) return '';
+            if (Array.isArray(ep)) {
+                return (ep[0] || {}).url || '';
+            }
+            return ep.url || '';
+        };
+        const prodUrl = getUrl(cfg.production_endpoints);
+        const sandUrl = getUrl(cfg.sandbox_endpoints);
+        if (prodUrl && sandUrl) {
+            return (
+                <>
+                    {'Prod: ' + prodUrl}
+                    <br />
+                    {'Sandbox: ' + sandUrl}
+                </>
+            );
+        }
+        if (prodUrl) return 'Prod: ' + prodUrl;
+        if (sandUrl) return 'Sandbox: ' + sandUrl;
+        return '';
+    })();
+
     const handleChange = (event) => {
         const { value } = event.target;
         operationsDispatcher({
@@ -277,20 +307,26 @@ export default function ResourceEndpointSelector(props) {
                             onChange={handleChange}
                             disabled={disableUpdate || definitions.length === 0}
                             helperText={
+                                // eslint-disable-next-line no-nested-ternary
                                 definitions.length === 0
                                     ? (
                                         <FormattedMessage
                                             id={MSG_PREFIX + '.noDefs'}
                                             defaultMessage={
                                                 'No endpoint definitions found.'
-                                                + ' Create them on the Endpoints page first.'
+                                                + ' Create them on the'
+                                                + ' Endpoints page first.'
                                             }
                                         />
                                     )
-                                    : (
+                                    : selectedUrlHint || (
                                         <FormattedMessage
                                             id={MSG_PREFIX + '.hint'}
-                                            defaultMessage='Select an endpoint definition to assign to this operation'
+                                            defaultMessage={
+                                                'Select an endpoint'
+                                                + ' definition to assign'
+                                                + ' to this operation'
+                                            }
                                         />
                                     )
                             }

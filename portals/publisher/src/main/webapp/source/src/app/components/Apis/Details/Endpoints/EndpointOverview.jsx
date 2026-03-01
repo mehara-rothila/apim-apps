@@ -194,6 +194,7 @@ function EndpointOverview(props) {
         endpointConfiguration,
         componentValidator,
         endpointSecurityTypes,
+        hideProductionSandbox,
     } = props;
     const { endpointConfig } = api;
     const [endpointType, setEndpointType] = useState(endpointTypes[0]);
@@ -803,22 +804,21 @@ function EndpointOverview(props) {
                     </FormControl>
                 </Grid>
                 )}
+                {!hideProductionSandbox && (
                 <Grid item xs={12}>
-                    {(endpointType.key === 'INLINE' || endpointType.key === 'MOCKED_OAS') ? 
-                        iff(Object.keys(swaggerDef.paths).length !== 0, 
-                            <MockImplEndpoints 
+                    {(endpointType.key === 'INLINE' || endpointType.key === 'MOCKED_OAS') ?
+                        iff(Object.keys(swaggerDef.paths).length !== 0,
+                            <MockImplEndpoints
                                 key={endpointType.key}
-                                paths={swaggerDef.paths} 
-                                swagger={swaggerDef} 
-                                updatePaths={updatePaths} 
-                                endpointType={endpointType.key} 
+                                paths={swaggerDef.paths}
+                                swagger={swaggerDef}
+                                updatePaths={updatePaths}
+                                endpointType={endpointType.key}
                                 endpointConfig={endpointConfig}
                                 endpointsDispatcher={endpointsDispatcher}
-                            />, 
+                            />,
                             <Progress />)
-                        : (endpointType.key !== 'http'
-                            && endpointType.key !== 'address'
-                            && (
+                        : (
                             <Paper className={classes.endpointContainer}>
 
                                 {endpointType.key === 'service'
@@ -1296,8 +1296,9 @@ function EndpointOverview(props) {
                                         </>
                                     )}
                             </Paper>
-                        ))}
+                        )}
                 </Grid>
+                )}
                 {endpointType.key === 'INLINE' || endpointType.key === 'MOCKED_OAS' ||
                     endpointType.key === 'prototyped' || endpointType.key === 'awslambda' || api.type === 'WS' || endpointType.key === 'sequence_backend'
                     || (api.subtypeConfiguration?.subtype !== 'AIAPI')

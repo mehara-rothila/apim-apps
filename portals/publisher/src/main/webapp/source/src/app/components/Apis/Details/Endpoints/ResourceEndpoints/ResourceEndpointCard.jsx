@@ -79,13 +79,16 @@ const MSG_PREFIX = 'Apis.Details.Endpoints.ResourceEndpointCard';
  * @returns {object} { prodUrls: string[], sandUrls: string[] }
  */
 function getDisplayUrls(definition) {
-    const epType = definition.endpoint_type || 'http';
+    // Server may wrap config inside endpointConfig
+    const cfg = definition.endpointConfig || definition;
+    const epType = cfg.endpoint_type
+        || definition.endpoint_type || 'http';
     let prodUrls = [];
     let sandUrls = [];
 
     if (epType === 'load_balance') {
-        const prodEps = definition.production_endpoints;
-        const sandEps = definition.sandbox_endpoints;
+        const prodEps = cfg.production_endpoints;
+        const sandEps = cfg.sandbox_endpoints;
         if (Array.isArray(prodEps)) {
             prodUrls = prodEps.map((ep) => ep.url).filter(Boolean);
         } else if (prodEps?.url) {
@@ -97,28 +100,32 @@ function getDisplayUrls(definition) {
             sandUrls = [sandEps.url];
         }
     } else if (epType === 'failover') {
-        if (definition.production_endpoints?.url) {
-            prodUrls = [definition.production_endpoints.url];
+        if (cfg.production_endpoints?.url) {
+            prodUrls = [cfg.production_endpoints.url];
         }
-        if (definition.production_failovers?.length > 0) {
+        const prodFo = cfg.production_failovers
+            || definition.production_failovers;
+        if (prodFo?.length > 0) {
             prodUrls = prodUrls.concat(
-                definition.production_failovers.map((ep) => ep.url).filter(Boolean),
+                prodFo.map((ep) => ep.url).filter(Boolean),
             );
         }
-        if (definition.sandbox_endpoints?.url) {
-            sandUrls = [definition.sandbox_endpoints.url];
+        if (cfg.sandbox_endpoints?.url) {
+            sandUrls = [cfg.sandbox_endpoints.url];
         }
-        if (definition.sandbox_failovers?.length > 0) {
+        const sandFo = cfg.sandbox_failovers
+            || definition.sandbox_failovers;
+        if (sandFo?.length > 0) {
             sandUrls = sandUrls.concat(
-                definition.sandbox_failovers.map((ep) => ep.url).filter(Boolean),
+                sandFo.map((ep) => ep.url).filter(Boolean),
             );
         }
     } else {
-        if (definition.production_endpoints?.url) {
-            prodUrls = [definition.production_endpoints.url];
+        if (cfg.production_endpoints?.url) {
+            prodUrls = [cfg.production_endpoints.url];
         }
-        if (definition.sandbox_endpoints?.url) {
-            sandUrls = [definition.sandbox_endpoints.url];
+        if (cfg.sandbox_endpoints?.url) {
+            sandUrls = [cfg.sandbox_endpoints.url];
         }
     }
     return { prodUrls, sandUrls };
@@ -157,7 +164,8 @@ export default function ResourceEndpointCard(props) {
 
     const history = useHistory();
     const urlPrefix = getBasePath(apiObject.apiType);
-    const epType = definition.endpoint_type || 'http';
+    const epType = definition.endpointConfig?.endpoint_type
+        || definition.endpoint_type || 'http';
     const { prodUrls, sandUrls } = getDisplayUrls(definition);
     const restricted = isRestricted(['apim:api_create'], apiObject);
 

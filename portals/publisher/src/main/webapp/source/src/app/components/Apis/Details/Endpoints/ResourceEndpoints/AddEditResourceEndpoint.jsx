@@ -336,9 +336,15 @@ export default function AddEditResourceEndpoint(props) {
             if (isEditing) {
                 const def = defs.find((d) => d.id === endpointId);
                 if (def) {
+                    // Server wraps config in endpointConfig
+                    const cfg = def.endpointConfig || {};
                     dispatch({
                         field: 'all',
-                        value: { ...DEFAULT_STATE, ...def },
+                        value: {
+                            ...DEFAULT_STATE,
+                            ...def,
+                            ...cfg,
+                        },
                     });
                 }
             }
@@ -422,6 +428,29 @@ export default function AddEditResourceEndpoint(props) {
             const latestSwagger = response.body;
             const defs = latestSwagger[DEFS_KEY] || [];
             const result = { ...state };
+
+            // Strip sandbox_endpoints if URL is empty to avoid malformed
+            // synapse XML at deployment (empty URL generates invalid
+            // endpoint property elements)
+            if (result.sandbox_endpoints) {
+                const sbUrl = Array.isArray(result.sandbox_endpoints)
+                    ? result.sandbox_endpoints[0]?.url
+                    : result.sandbox_endpoints.url;
+                if (!sbUrl) {
+                    delete result.sandbox_endpoints;
+                    delete result.sandbox_failovers;
+                }
+            }
+            // Strip production_endpoints if URL is empty too
+            if (result.production_endpoints) {
+                const prodUrl = Array.isArray(result.production_endpoints)
+                    ? result.production_endpoints[0]?.url
+                    : result.production_endpoints.url;
+                if (!prodUrl) {
+                    delete result.production_endpoints;
+                    delete result.production_failovers;
+                }
+            }
 
             let updatedDefs;
             if (isEditing) {

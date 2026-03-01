@@ -26,6 +26,7 @@ import Button from '@mui/material/Button';
 import { useAppContext, usePublisherSettings } from 'AppComponents/Shared/AppContext';
 import { Link, withRouter } from 'react-router-dom';
 import CustomSplitButton from 'AppComponents/Shared/CustomSplitButton';
+// eslint-disable-next-line no-unused-vars
 import NewEndpointCreate from 'AppComponents/Apis/Details/Endpoints/NewEndpointCreate';
 import { APIContext } from 'AppComponents/Apis/Details/components/ApiContext';
 import cloneDeep from 'lodash.clonedeep';
@@ -255,6 +256,17 @@ function Endpoints(props) {
     };
     const [apiObject, apiDispatcher] = useReducer(apiReducer, api.toJSON());
 
+    // Auto-initialize endpointConfig as HTTP for regular APIs so Load Balance section renders
+    useEffect(() => {
+        if (api.endpointConfig === null && apiObject.endpointConfig === null
+            && !isMCPServer && api.subtypeConfiguration?.subtype !== 'AIAPI') {
+            apiDispatcher({
+                action: 'endpointImplementationType',
+                value: { endpointType: 'http', implementationType: undefined },
+            });
+        }
+    }, []);
+
     useEffect(() => {
         apiDispatcher({ action: 'reset', value: api.toJSON() });
     }, [api.id]);
@@ -344,6 +356,24 @@ function Endpoints(props) {
             const apiObjectCopy = cloneDeep(apiObject);
             if (apiObjectCopy.endpointConfig.endpoint_type === 'service') {
                 apiObjectCopy.endpointConfig.endpoint_type = 'http';
+            }
+            // Ensure endpointConfig has valid URLs from primary resource endpoint
+            const primaryRefSave = swagger['x-wso2-primary-endpoint-ref'];
+            const resDefsSave = swagger['x-wso2-resource-endpoint-definitions'] || [];
+            if (primaryRefSave && resDefsSave.length > 0) {
+                const primaryDefSave = resDefsSave.find((d) => d.id === primaryRefSave);
+                if (primaryDefSave) {
+                    const cfgSave = primaryDefSave.endpointConfig || primaryDefSave;
+                    if (!apiObjectCopy.endpointConfig) {
+                        apiObjectCopy.endpointConfig = { endpoint_type: 'http' };
+                    }
+                    if (cfgSave.production_endpoints && cfgSave.production_endpoints.url) {
+                        apiObjectCopy.endpointConfig.production_endpoints = cfgSave.production_endpoints;
+                    }
+                    if (cfgSave.sandbox_endpoints && cfgSave.sandbox_endpoints.url) {
+                        apiObjectCopy.endpointConfig.sandbox_endpoints = cfgSave.sandbox_endpoints;
+                    }
+                }
             }
             // Save swagger too (for resource endpoint definitions)
             api.updateSwagger(swagger).then((resp) => {
@@ -440,7 +470,7 @@ function Endpoints(props) {
                         } else {
                             Alert.error('Error occurred while updating endpoint configurations');
                         }
-                    }); 
+                    });
             }).finally(() => history.push({
                 pathname: api.isAPIProduct() ? `/api-products/${api.id}/deployments`
                     : `/apis/${api.id}/deployments`,
@@ -450,6 +480,24 @@ function Endpoints(props) {
             const apiObjectCopy = cloneDeep(apiObject);
             if (apiObjectCopy.endpointConfig.endpoint_type === 'service') {
                 apiObjectCopy.endpointConfig.endpoint_type = 'http';
+            }
+            // Ensure endpointConfig has valid URLs from primary resource endpoint
+            const primaryRefDeploy = swagger['x-wso2-primary-endpoint-ref'];
+            const resDefsDeploy = swagger['x-wso2-resource-endpoint-definitions'] || [];
+            if (primaryRefDeploy && resDefsDeploy.length > 0) {
+                const primaryDefDeploy = resDefsDeploy.find((d) => d.id === primaryRefDeploy);
+                if (primaryDefDeploy) {
+                    const cfgDeploy = primaryDefDeploy.endpointConfig || primaryDefDeploy;
+                    if (!apiObjectCopy.endpointConfig) {
+                        apiObjectCopy.endpointConfig = { endpoint_type: 'http' };
+                    }
+                    if (cfgDeploy.production_endpoints && cfgDeploy.production_endpoints.url) {
+                        apiObjectCopy.endpointConfig.production_endpoints = cfgDeploy.production_endpoints;
+                    }
+                    if (cfgDeploy.sandbox_endpoints && cfgDeploy.sandbox_endpoints.url) {
+                        apiObjectCopy.endpointConfig.sandbox_endpoints = cfgDeploy.sandbox_endpoints;
+                    }
+                }
             }
             // Save swagger too (for resource endpoint definitions)
             api.updateSwagger(swagger).then((resp) => {
@@ -481,6 +529,12 @@ function Endpoints(props) {
      * @return {{isValid: boolean, message: string}} The endpoint validity information.
      * */
     const validate = (implementationType) => {
+        // Skip validation when a primary resource endpoint is set
+        const resDefs = swagger['x-wso2-resource-endpoint-definitions'] || [];
+        const primaryRef = swagger['x-wso2-primary-endpoint-ref'];
+        if (primaryRef && resDefs.length > 0) {
+            return { isValid: true, message: '' };
+        }
         const { endpointConfig } = apiObject;
         if (endpointConfig && endpointConfig.endpoint_security) {
             const { production, sandbox } = endpointConfig.endpoint_security;
@@ -737,6 +791,40 @@ function Endpoints(props) {
         }
     }, []);
 
+    // Sync primary resource endpoint to API-level endpoint config
+    useEffect(() => {
+        const DEFS_KEY = 'x-wso2-resource-endpoint-definitions';
+        const PRIMARY_KEY = 'x-wso2-primary-endpoint-ref';
+        const defs = swagger[DEFS_KEY] || [];
+        const primaryId = swagger[PRIMARY_KEY];
+        if (primaryId && defs.length > 0) {
+            const primaryDef = defs.find((d) => d.id === primaryId);
+            if (primaryDef) {
+                const cfg = primaryDef.endpointConfig || primaryDef;
+                const currentConfig = apiObject.endpointConfig || {};
+                const mergedConfig = {
+                    endpoint_type: currentConfig.endpoint_type || 'http',
+                    failOver: currentConfig.failOver !== undefined ? currentConfig.failOver : false,
+                    ...currentConfig,
+                };
+                if (cfg.production_endpoints && cfg.production_endpoints.url) {
+                    mergedConfig.production_endpoints = cfg.production_endpoints;
+                }
+                if (cfg.sandbox_endpoints && cfg.sandbox_endpoints.url) {
+                    mergedConfig.sandbox_endpoints = cfg.sandbox_endpoints;
+                }
+                // Remove sandbox_endpoints if URL is empty
+                if (mergedConfig.sandbox_endpoints && !mergedConfig.sandbox_endpoints.url) {
+                    delete mergedConfig.sandbox_endpoints;
+                }
+                apiDispatcher({
+                    action: 'select_endpoint_category',
+                    value: mergedConfig,
+                });
+            }
+        }
+    }, [swagger]);
+
     useEffect(() => {
         setIsCustomBackendSelected(false);
         setIsValidSequenceBackend(true);
@@ -755,12 +843,7 @@ function Endpoints(props) {
         setSwagger(swaggerObj);
     };
 
-    /**
-     * Generate endpoint configuration based on the selected endpoint type and set to the api object.
-     *
-     * @param {string} endpointType The endpoint type.
-     * @param {string} implementationType The endpoint implementationType. (Required only for prototype endpoints)
-     * */
+    // eslint-disable-next-line no-unused-vars
     const generateEndpointConfig = (endpointType, implementationType) => {
         apiDispatcher({ action: 'endpointImplementationType', value: { endpointType, implementationType } });
     };
@@ -771,153 +854,164 @@ function Endpoints(props) {
 
     return (
         (<Root>
-            {/* Since the api is set to the state in component did mount, check both the api and the apiObject. */}
-            {(api.endpointConfig === null && apiObject.endpointConfig === null && !isMCPServer) ?
-                <NewEndpointCreate generateEndpointConfig={generateEndpointConfig} apiType={apiObject.type}
-                    componentValidator={componentValidator}
-                />
-                : (
-                    <div className={classes.root}>
-                        <div className={classes.titleWrapper}>
-                            <Typography
-                                id='itest-api-details-endpoints-head'
-                                variant='h4'
-                                component='h2'
-                                align='left'
-                                className={classes.mainTitle}
+            {(api.subtypeConfiguration?.subtype === 'AIAPI' || isMCPServer) ? (
+                <div className={classes.root}>
+                    <div className={classes.titleWrapper}>
+                        <Typography
+                            id='itest-api-details-endpoints-head'
+                            variant='h4'
+                            component='h2'
+                            align='left'
+                            className={classes.mainTitle}
+                        >
+                            <FormattedMessage
+                                id='Apis.Details.Endpoints.Endpoints.endpoints.header'
+                                defaultMessage='Endpoints'
+                            />
+                        </Typography>
+                        {api.subtypeConfiguration?.subtype === 'AIAPI' && (
+                            <Button
+                                variant='outlined'
+                                color='primary'
+                                size='small'
+                                disabled={isRestricted(['apim:api_create'], api)}
+                                onClick={() => {
+                                    history.push(`${getBasePath(api.apiType)}${api.id}/endpoints/create`);
+                                }}
+                                style={{ marginLeft: '1em' }}
                             >
+                                <AddCircle className={classes.buttonIcon} />
                                 <FormattedMessage
-                                    id='Apis.Details.Endpoints.Endpoints.endpoints.header'
-                                    defaultMessage='Endpoints'
+                                    id='Apis.Details.Endpoints.add.new.endpoint'
+                                    defaultMessage='Add New Endpoint'
                                 />
-                            </Typography>
-                            {api.subtypeConfiguration?.subtype === 'AIAPI' && (
-                                <Button
-                                    variant='outlined'
-                                    color='primary'
-                                    size='small'
-                                    disabled={isRestricted(['apim:api_create'], api)}
-                                    onClick={() => {
-                                        history.push(`${getBasePath(api.apiType)}${api.id}/endpoints/create`);
-                                    }}
-                                    style={{ marginLeft: '1em' }}
-                                >
-                                    <AddCircle className={classes.buttonIcon} />
-                                    <FormattedMessage
-                                        id='Apis.Details.Endpoints.add.new.endpoint'
-                                        defaultMessage='Add New Endpoint'
-                                    />
-                                </Button>
-                            )}
-                        </div>
-                        {((api.subtypeConfiguration?.subtype === 'AIAPI') && (
-                            <AIEndpoints
-                                swaggerDef={swagger}
-                                updateSwagger={changeSwagger}
-                                apiObject={apiObject}
-                                onChangeAPI={apiDispatcher}
-                                endpointsDispatcher={apiDispatcher}
-                                saveAndRedirect={saveAndRedirect}
-                                llmProviderEndpointConfiguration={llmProviderEndpointConfiguration}
-                            />
-                        ))}
-                        {isMCPServer && (
-                            <MCPServerEndpoints
-                                apiObject={apiObject}
-                                history={history}
-                            />
-                        )}
-                        {(api.subtypeConfiguration?.subtype !== 'AIAPI' && !isMCPServer) && (
-                            <div>
-                                <ResourceEndpointDefinitions
-                                    swaggerDef={swagger}
-                                    updateSwagger={changeSwagger}
-                                    apiObject={apiObject}
-                                />
-                                <Grid container>
-                                    <Grid item xs={12} className={classes.endpointsContainer}>
-                                        <EndpointOverview
-                                            swaggerDef={swagger}
-                                            updateSwagger={changeSwagger}
-                                            api={apiObject}
-                                            onChangeAPI={apiDispatcher}
-                                            endpointsDispatcher={apiDispatcher}
-                                            saveAndRedirect={saveAndRedirect}
-                                            sandBoxBackendList={sandBoxBackendList}
-                                            setSandBoxBackendList={setSandBoxBackendList}
-                                            productionBackendList={productionBackendList}
-                                            setProductionBackendList={setProductionBackendList}
-                                            isValidSequenceBackend={isValidSequenceBackend}
-                                            setIsValidSequenceBackend={setIsValidSequenceBackend}
-                                            isCustomBackendSelected={isCustomBackendSelected}
-                                            setIsCustomBackendSelected={setIsCustomBackendSelected}
-                                            componentValidator={componentValidator}
-                                            endpointSecurityTypes={endpointSecurityTypes}
-                                        />
-                                    </Grid>
-                                </Grid>
-                                {
-                                    endpointValidity.isValid
-                                        ? <div />
-                                        : (
-                                            <Grid item className={classes.errorMessageContainer}>
-                                                <Typography className={classes.endpointValidityMessage}>
-                                                    {endpointValidity.message}
-                                                </Typography>
-                                            </Grid>
-                                        )
-                                }
-                                <Grid
-                                    container
-                                    direction='row'
-                                    alignItems='flex-start'
-                                    spacing={1}
-                                    className={classes.buttonSection}
-                                >
-                                    <Grid item>
-                                        {api.isRevision || !endpointValidity.isValid
-                                            || (settings && settings.portalConfigurationOnlyModeEnabled)
-                                            || isRestricted(['apim:api_create'], api) ? (
-                                                <Button
-                                                    disabled
-                                                    type='submit'
-                                                    variant='contained'
-                                                    color='primary'
-                                                >
-                                                    <FormattedMessage
-                                                        id='Apis.Details.Configuration.Configuration.save'
-                                                        defaultMessage='Save'
-                                                    />
-                                                </Button>
-                                            ) : (
-                                                <CustomSplitButton
-                                                    advertiseInfo={api.advertiseInfo}
-                                                    api={api}
-                                                    handleSave={handleSave}
-                                                    handleSaveAndDeploy={handleSaveAndDeploy}
-                                                    isUpdating={isUpdating}
-                                                    id='endpoint-save-btn'
-                                                    isValidSequenceBackend={isValidSequenceBackend}
-                                                    isCustomBackendSelected
-                                                />
-                                            )}
-                                    </Grid>
-                                    <Grid item>
-                                        <Button
-                                            component={Link}
-                                            to={getBasePath(api.apiType) + api.id + '/overview'}
-                                        >
-                                            <FormattedMessage
-                                                id='Apis.Details.Endpoints.Endpoints.cancel'
-                                                defaultMessage='Cancel'
-                                            />
-                                        </Button>
-                                    </Grid>
-                                </Grid>
-                            </div>
+                            </Button>
                         )}
                     </div>
-                )}
+                    {((api.subtypeConfiguration?.subtype === 'AIAPI') && (
+                        <AIEndpoints
+                            swaggerDef={swagger}
+                            updateSwagger={changeSwagger}
+                            apiObject={apiObject}
+                            onChangeAPI={apiDispatcher}
+                            endpointsDispatcher={apiDispatcher}
+                            saveAndRedirect={saveAndRedirect}
+                            llmProviderEndpointConfiguration={llmProviderEndpointConfiguration}
+                        />
+                    ))}
+                    {isMCPServer && (
+                        <MCPServerEndpoints
+                            apiObject={apiObject}
+                            history={history}
+                        />
+                    )}
+                </div>
+            ) : (
+                <div className={classes.root}>
+                    <div className={classes.titleWrapper}>
+                        <Typography
+                            id='itest-api-details-endpoints-head'
+                            variant='h4'
+                            component='h2'
+                            align='left'
+                            className={classes.mainTitle}
+                        >
+                            <FormattedMessage
+                                id='Apis.Details.Endpoints.Endpoints.endpoints.header'
+                                defaultMessage='Endpoints'
+                            />
+                        </Typography>
+                    </div>
+                    <ResourceEndpointDefinitions
+                        swaggerDef={swagger}
+                        updateSwagger={changeSwagger}
+                        apiObject={apiObject}
+                    />
+                    {apiObject.endpointConfig && (
+                        <Grid container>
+                            <Grid item xs={12} className={classes.endpointsContainer}>
+                                <EndpointOverview
+                                    swaggerDef={swagger}
+                                    updateSwagger={changeSwagger}
+                                    api={apiObject}
+                                    onChangeAPI={apiDispatcher}
+                                    endpointsDispatcher={apiDispatcher}
+                                    saveAndRedirect={saveAndRedirect}
+                                    sandBoxBackendList={sandBoxBackendList}
+                                    setSandBoxBackendList={setSandBoxBackendList}
+                                    productionBackendList={productionBackendList}
+                                    setProductionBackendList={setProductionBackendList}
+                                    isValidSequenceBackend={isValidSequenceBackend}
+                                    setIsValidSequenceBackend={setIsValidSequenceBackend}
+                                    isCustomBackendSelected={isCustomBackendSelected}
+                                    setIsCustomBackendSelected={setIsCustomBackendSelected}
+                                    componentValidator={componentValidator}
+                                    endpointSecurityTypes={endpointSecurityTypes}
+                                    hideProductionSandbox
+                                />
+                            </Grid>
+                        </Grid>
+                    )}
+                    {
+                        endpointValidity.isValid
+                            ? <div />
+                            : (
+                                <Grid item className={classes.errorMessageContainer}>
+                                    <Typography className={classes.endpointValidityMessage}>
+                                        {endpointValidity.message}
+                                    </Typography>
+                                </Grid>
+                            )
+                    }
+                    <Grid
+                        container
+                        direction='row'
+                        alignItems='flex-start'
+                        spacing={1}
+                        className={classes.buttonSection}
+                    >
+                        <Grid item>
+                            {api.isRevision || !endpointValidity.isValid
+                                || (settings && settings.portalConfigurationOnlyModeEnabled)
+                                || isRestricted(['apim:api_create'], api) ? (
+                                    <Button
+                                        disabled
+                                        type='submit'
+                                        variant='contained'
+                                        color='primary'
+                                    >
+                                        <FormattedMessage
+                                            id='Apis.Details.Configuration.Configuration.save'
+                                            defaultMessage='Save'
+                                        />
+                                    </Button>
+                                ) : (
+                                    <CustomSplitButton
+                                        advertiseInfo={api.advertiseInfo}
+                                        api={api}
+                                        handleSave={handleSave}
+                                        handleSaveAndDeploy={handleSaveAndDeploy}
+                                        isUpdating={isUpdating}
+                                        id='endpoint-save-btn'
+                                        isValidSequenceBackend={isValidSequenceBackend}
+                                        isCustomBackendSelected={isCustomBackendSelected}
+                                    />
+                                )}
+                        </Grid>
+                        <Grid item>
+                            <Button
+                                component={Link}
+                                to={getBasePath(api.apiType) + api.id + '/overview'}
+                            >
+                                <FormattedMessage
+                                    id='Apis.Details.Endpoints.Endpoints.cancel'
+                                    defaultMessage='Cancel'
+                                />
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </div>
+            )}
         </Root>)
     );
 }
