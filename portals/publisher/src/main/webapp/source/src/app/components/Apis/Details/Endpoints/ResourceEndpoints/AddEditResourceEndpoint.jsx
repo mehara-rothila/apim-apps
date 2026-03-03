@@ -46,6 +46,7 @@ import { APIContext } from 'AppComponents/Apis/Details/components/ApiContext';
 import { usePublisherSettings } from 'AppComponents/Shared/AppContext';
 import { getBasePath } from 'AppComponents/Shared/Utils';
 import API from 'AppData/api';
+import CONSTS from 'AppData/Constants';
 import Alert from 'AppComponents/Shared/Alert';
 import { isRestricted } from 'AppData/AuthManager';
 import InlineMessage from 'AppComponents/Shared/InlineMessage';
@@ -113,10 +114,6 @@ const DEFAULT_STATE = {
     endpoint_security: {
         production: { enabled: false, type: 'NONE' },
         sandbox: { enabled: false, type: 'NONE' },
-    },
-    advancedConfig: {
-        production: {},
-        sandbox: {},
     },
 };
 
@@ -428,6 +425,9 @@ export default function AddEditResourceEndpoint(props) {
             const latestSwagger = response.body;
             const defs = latestSwagger[DEFS_KEY] || [];
             const result = { ...state };
+            // Remove stale nested keys (fields already spread into state)
+            delete result.endpointConfig;
+            delete result.advancedConfig;
 
             // Strip sandbox_endpoints if URL is empty to avoid malformed
             // synapse XML at deployment (empty URL generates invalid
@@ -499,10 +499,19 @@ export default function AddEditResourceEndpoint(props) {
     };
 
     const saveAdvanceConfig = (config) => {
-        dispatch({
-            field: 'advancedConfig',
-            value: { [advConfigCategory]: config },
-        });
+        const endpointField = advConfigCategory === 'production'
+            ? 'production_endpoints' : 'sandbox_endpoints';
+        const currentEp = state[endpointField];
+        if (Array.isArray(currentEp)) {
+            const updated = [...currentEp];
+            updated[0] = { ...updated[0], config };
+            dispatch({ field: endpointField, value: updated });
+        } else {
+            dispatch({
+                field: endpointField,
+                value: { ...currentEp, config },
+            });
+        }
         setAdvConfigOpen(false);
     };
 
@@ -514,9 +523,21 @@ export default function AddEditResourceEndpoint(props) {
 
     const saveSecurityConfig = (securityObj, enType) => {
         const category = enType || securityCategory;
+        const { type } = securityObj;
+        let newSecurityObj = securityObj;
+        const secretPlaceholder = '******';
+        newSecurityObj.clientSecret = newSecurityObj.clientSecret
+            === secretPlaceholder ? '' : newSecurityObj.clientSecret;
+        newSecurityObj.password = newSecurityObj.password
+            === secretPlaceholder ? '' : newSecurityObj.password;
+        if (type === 'NONE') {
+            newSecurityObj = { ...CONSTS.DEFAULT_ENDPOINT_SECURITY, type };
+        } else {
+            newSecurityObj.enabled = true;
+        }
         dispatch({
             field: 'endpoint_security',
-            value: { [category]: securityObj },
+            value: { [category]: newSecurityObj },
         });
         setSecurityOpen(false);
     };
@@ -985,9 +1006,10 @@ export default function AddEditResourceEndpoint(props) {
                 <DialogContent>
                     <AdvanceEndpointConfig
                         advanceConfig={
-                            state.advancedConfig?.[
-                                advConfigCategory]
-                            || {}
+                            (advConfigCategory === 'production'
+                                ? state.production_endpoints
+                                : state.sandbox_endpoints
+                            )?.config || {}
                         }
                         isSOAPEndpoint={
                             state.endpoint_type === 'address'

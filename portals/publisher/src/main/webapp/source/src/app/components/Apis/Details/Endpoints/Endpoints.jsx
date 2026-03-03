@@ -379,6 +379,7 @@ function Endpoints(props) {
             api.updateSwagger(swagger).then((resp) => {
                 setSwagger(resp.obj);
             }).catch((error) => {
+                Alert.error('Error saving resource endpoint definitions');
                 console.error('Error saving swagger', error);
             });
             updateAPI(apiObjectCopy)
@@ -503,6 +504,7 @@ function Endpoints(props) {
             api.updateSwagger(swagger).then((resp) => {
                 setSwagger(resp.obj);
             }).catch((error) => {
+                Alert.error('Error saving resource endpoint definitions');
                 console.error('Error saving swagger', error);
             });
             updateAPI(apiObjectCopy)
@@ -927,7 +929,7 @@ function Endpoints(props) {
                         updateSwagger={changeSwagger}
                         apiObject={apiObject}
                     />
-                    {apiObject.endpointConfig && (
+                    {(api.subtypeConfiguration?.subtype !== 'AIAPI' && !isMCPServer) && (
                         <Grid container>
                             <Grid item xs={12} className={classes.endpointsContainer}>
                                 <EndpointOverview
