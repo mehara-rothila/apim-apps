@@ -779,7 +779,42 @@ function Endpoints(props) {
     useEffect(() => {
         if (!['WS', 'SSE'].includes(api.type) && !api.isMCPServer()) {
             api.getSwagger(apiObject.id).then((resp) => {
-                setSwagger(resp.obj);
+                const swaggerDoc = resp.obj;
+                const DEFS_KEY = 'x-wso2-resource-endpoint-definitions';
+                const PRIMARY_KEY = 'x-wso2-primary-endpoint-ref';
+                const defs = swaggerDoc[DEFS_KEY] || [];
+                const epConfig = apiObject.endpointConfig;
+                // Auto-create a resource endpoint definition from API-level
+                // endpoint if none exist yet
+                if (defs.length === 0 && epConfig
+                    && epConfig.production_endpoints
+                    && epConfig.production_endpoints.url) {
+                    const defId = 'ep-'
+                        + Date.now().toString(36)
+                        + Math.random().toString(36).substr(2, 9);
+                    const newDef = {
+                        id: defId,
+                        name: 'Primary Endpoint',
+                        endpoint_type: epConfig.endpoint_type || 'http',
+                        production_endpoints: epConfig.production_endpoints,
+                    };
+                    if (epConfig.sandbox_endpoints
+                        && epConfig.sandbox_endpoints.url) {
+                        newDef.sandbox_endpoints = epConfig.sandbox_endpoints;
+                    }
+                    const updatedSwagger = {
+                        ...swaggerDoc,
+                        [DEFS_KEY]: [newDef],
+                        [PRIMARY_KEY]: defId,
+                    };
+                    api.updateSwagger(updatedSwagger).then((saveResp) => {
+                        setSwagger(saveResp.obj);
+                    }).catch(() => {
+                        setSwagger(swaggerDoc);
+                    });
+                } else {
+                    setSwagger(swaggerDoc);
+                }
             }).catch((err) => {
                 if (err.response) {
                     Alert.error(err.response.body.description);
