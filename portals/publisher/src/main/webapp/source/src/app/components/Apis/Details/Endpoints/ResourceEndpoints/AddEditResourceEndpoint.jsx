@@ -734,13 +734,18 @@ export default function AddEditResourceEndpoint(props) {
                                         : 'Sandbox Endpoint'
                                 }
                                 endpointURL={
+                                    // Show validation error only
+                                    // after user clicks Create
+                                    // eslint-disable-next-line no-nested-ternary
                                     deploymentStage === 'production'
                                         ? (state
                                             .production_endpoints
-                                            ?.url || '')
+                                            ?.url || (validating
+                                            ? '' : ' '))
                                         : (state
                                             .sandbox_endpoints
-                                            ?.url || '')
+                                            ?.url || (validating
+                                            ? '' : ' '))
                                 }
                                 type=''
                                 index={0}
