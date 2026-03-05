@@ -18,10 +18,10 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
+import Autocomplete from '@mui/material/Autocomplete';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
-import MenuItem from '@mui/material/MenuItem';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import FormControl from '@mui/material/FormControl';
@@ -110,18 +110,6 @@ export default function ResourceEndpointSelector(props) {
         return '';
     })();
 
-    const handleChange = (event) => {
-        const { value } = event.target;
-        operationsDispatcher({
-            action: 'resourceEndpointRef',
-            data: {
-                target,
-                verb,
-                value: value || undefined,
-            },
-        });
-    };
-
     const handleToggle = () => {
         if (isEnabled) {
             // Turn off: clear the endpoint ref
@@ -178,7 +166,14 @@ export default function ResourceEndpointSelector(props) {
 
             {/* Toggle Switch */}
             <Grid item xs={1} />
-            <Grid item xs={11}>
+            <Grid
+                item
+                xs={11}
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                }}
+            >
                 <FormControl
                     disabled={
                         disableUpdate
@@ -204,28 +199,28 @@ export default function ResourceEndpointSelector(props) {
                         labelPlacement='start'
                     />
                 </FormControl>
-                <sup style={{ marginLeft: '10px' }}>
-                    <Tooltip
-                        title={(
-                            <FormattedMessage
-                                id={MSG_PREFIX + '.tooltip'}
-                                defaultMessage={
-                                    'Override the API-level '
-                                    + 'endpoint for this '
-                                    + 'resource by assigning a '
-                                    + 'custom endpoint definition '
-                                    + 'created on the Endpoints '
-                                    + 'page.'
-                                }
-                            />
-                        )}
+                <Tooltip
+                    title={(
+                        <FormattedMessage
+                            id={MSG_PREFIX + '.tooltip'}
+                            defaultMessage={
+                                'Override the API-level '
+                                + 'endpoint for this '
+                                + 'resource by assigning a '
+                                + 'custom endpoint definition '
+                                + 'created on the Endpoints '
+                                + 'page.'
+                            }
+                        />
+                    )}
+                    placement='right-end'
+                    interactive
+                >
+                    <HelpOutline
                         fontSize='small'
-                        placement='right-end'
-                        interactive
-                    >
-                        <HelpOutline />
-                    </Tooltip>
-                </sup>
+                        style={{ marginLeft: '10px' }}
+                    />
+                </Tooltip>
                 {definitions.length === 0 && (
                     <Typography
                         variant='caption'
@@ -294,53 +289,42 @@ export default function ResourceEndpointSelector(props) {
                 <>
                     <Grid item md={1} xs={1} />
                     <Grid item md={7} xs={7}>
-                        <TextField
-                            select
-                            style={{ width: 500 }}
-                            label={(
-                                <FormattedMessage
-                                    id={MSG_PREFIX + '.label'}
-                                    defaultMessage='Endpoint'
-                                />
-                            )}
-                            value={currentRef}
-                            onChange={handleChange}
-                            disabled={disableUpdate || definitions.length === 0}
-                            helperText={
-                                // eslint-disable-next-line no-nested-ternary
-                                definitions.length === 0
-                                    ? (
-                                        <FormattedMessage
-                                            id={MSG_PREFIX + '.noDefs'}
-                                            defaultMessage={
-                                                'No endpoint definitions found.'
-                                                + ' Create them on the'
-                                                + ' Endpoints page first.'
-                                            }
-                                        />
-                                    )
-                                    : selectedUrlHint || (
-                                        <FormattedMessage
-                                            id={MSG_PREFIX + '.hint'}
-                                            defaultMessage={
-                                                'Select an endpoint'
-                                                + ' definition to assign'
-                                                + ' to this operation'
-                                            }
-                                        />
-                                    )
+                        <Autocomplete
+                            id={verb + target + '-endpoint-autocomplete'}
+                            options={definitions}
+                            getOptionLabel={(option) => option.name || ''}
+                            isOptionEqualToValue={
+                                (option, value) => option.id === value.id
                             }
-                            margin='dense'
-                            variant='outlined'
-                        >
-                            {definitions.map((def) => {
+                            value={selectedDef || null}
+                            onChange={(event, newValue) => {
+                                operationsDispatcher({
+                                    action: 'resourceEndpointRef',
+                                    data: {
+                                        target,
+                                        verb,
+                                        value: newValue
+                                            ? newValue.id
+                                            : undefined,
+                                    },
+                                });
+                            }}
+                            disabled={
+                                disableUpdate
+                                || definitions.length === 0
+                            }
+                            style={{ width: 500 }}
+                            renderOption={(
+                                listOfOptions,
+                                option,
+                            ) => {
                                 const typeLabel = getTypeLabel(
-                                    def.endpoint_type,
+                                    option.endpoint_type,
                                 );
                                 return (
-                                    <MenuItem key={def.id} value={def.id}>
-                                        {def.name}
-                                        {def.id === primaryId && (
+                                    <li {...listOfOptions}>
+                                        {option.name}
+                                        {option.id === primaryId && (
                                             <Chip
                                                 label='Primary'
                                                 size='small'
@@ -364,10 +348,47 @@ export default function ResourceEndpointSelector(props) {
                                                 }}
                                             />
                                         )}
-                                    </MenuItem>
+                                    </li>
                                 );
-                            })}
-                        </TextField>
+                            }}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label={(
+                                        <FormattedMessage
+                                            id={MSG_PREFIX + '.label'}
+                                            defaultMessage='Endpoint'
+                                        />
+                                    )}
+                                    helperText={
+                                        // eslint-disable-next-line no-nested-ternary
+                                        definitions.length === 0
+                                            ? (
+                                                <FormattedMessage
+                                                    id={MSG_PREFIX + '.noDefs'}
+                                                    defaultMessage={
+                                                        'No endpoint definitions found.'
+                                                        + ' Create them on the'
+                                                        + ' Endpoints page first.'
+                                                    }
+                                                />
+                                            )
+                                            : selectedUrlHint || (
+                                                <FormattedMessage
+                                                    id={MSG_PREFIX + '.hint'}
+                                                    defaultMessage={
+                                                        'Select an endpoint'
+                                                        + ' definition to assign'
+                                                        + ' to this operation'
+                                                    }
+                                                />
+                                            )
+                                    }
+                                    margin='dense'
+                                    variant='outlined'
+                                />
+                            )}
+                        />
                     </Grid>
                     <Grid
                         item
