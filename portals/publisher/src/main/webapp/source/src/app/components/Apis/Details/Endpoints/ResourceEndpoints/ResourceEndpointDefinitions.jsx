@@ -18,19 +18,12 @@
 
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
-import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
-import Dialog from '@mui/material/Dialog';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import AddCircle from '@mui/icons-material/AddCircle';
+import { styled } from '@mui/material/styles';
 import { FormattedMessage } from 'react-intl';
-import { isRestricted } from 'AppData/AuthManager';
-import { useHistory } from 'react-router-dom';
-import { getBasePath } from 'AppComponents/Shared/Utils';
+import ConfirmDialog from 'AppComponents/Shared/ConfirmDialog';
 import ResourceEndpointCard from './ResourceEndpointCard';
 
 const DEFS_KEY = 'x-wso2-resource-endpoint-definitions';
@@ -42,6 +35,36 @@ const HTTP_METHODS = [
 ];
 
 const MSG_PREFIX = 'Apis.Details.Endpoints.ResourceEndpointDefinitions';
+
+const StyledPaper = styled(Paper)(({ theme }) => ({
+    padding: theme.spacing(3),
+}));
+
+/**
+ * Check if a definition has production endpoints.
+ *
+ * @param {object} def Endpoint definition
+ * @returns {boolean} True if production endpoints exist
+ */
+function hasProductionEndpoint(def) {
+    const cfg = def.endpointConfig || def;
+    const prod = cfg.production_endpoints;
+    if (Array.isArray(prod)) return prod.length > 0;
+    return !!prod?.url;
+}
+
+/**
+ * Check if a definition has sandbox endpoints.
+ *
+ * @param {object} def Endpoint definition
+ * @returns {boolean} True if sandbox endpoints exist
+ */
+function hasSandboxEndpoint(def) {
+    const cfg = def.endpointConfig || def;
+    const sand = cfg.sandbox_endpoints;
+    if (Array.isArray(sand)) return sand.length > 0;
+    return !!sand?.url;
+}
 
 /**
  * Check if a definition is referenced by any
@@ -72,10 +95,10 @@ function isDefinitionReferenced(paths, defId) {
 }
 
 /**
- * Card listing on the Endpoints page for managing
- * resource endpoint definitions. "Add New Endpoint"
- * navigates to the create page; edit navigates to
- * the edit page.
+ * Listing on the Endpoints page for managing
+ * resource endpoint definitions. Shows separate
+ * Production and Sandbox sections matching the
+ * AI Endpoints layout.
  *
  * @param {object} props Component props
  * @returns {JSX.Element} Definitions listing
@@ -87,11 +110,11 @@ export default function ResourceEndpointDefinitions(props) {
         apiObject,
     } = props;
 
-    const history = useHistory();
-    const urlPrefix = getBasePath(apiObject.apiType);
-
     const definitions = swaggerDef[DEFS_KEY] || [];
     const primaryId = swaggerDef[PRIMARY_KEY] || null;
+
+    const productionDefs = definitions.filter(hasProductionEndpoint);
+    const sandboxDefs = definitions.filter(hasSandboxEndpoint);
 
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     const [selectedDef, setSelectedDef] = useState(null);
@@ -133,139 +156,138 @@ export default function ResourceEndpointDefinitions(props) {
         setConfirmDeleteOpen(true);
     };
 
-    const restricted = isRestricted(
-        ['apim:api_create'], apiObject,
-    );
-
     return (
-        <Paper
-            elevation={0}
-            variant='outlined'
-            sx={{ p: 2, mb: 2 }}
-        >
-            <Box
-                display='flex'
-                justifyContent='space-between'
-                alignItems='center'
-                mb={2}
-            >
-                <Typography variant='h6' component='h3'>
-                    <FormattedMessage
-                        id={MSG_PREFIX + '.title'}
-                        defaultMessage='Resource Endpoint Definitions'
-                    />
-                </Typography>
-                <Button
-                    variant='outlined'
-                    color='primary'
-                    size='small'
-                    disabled={restricted}
-                    onClick={() => {
-                        history.push(
-                            urlPrefix + apiObject.id
-                            + '/endpoints/create',
-                        );
-                    }}
-                >
-                    <AddCircle sx={{ mr: 0.5 }} fontSize='small' />
-                    <FormattedMessage
-                        id={MSG_PREFIX + '.addEndpoint'}
-                        defaultMessage='Add New Endpoint'
-                    />
-                </Button>
-            </Box>
-
-            <Typography
-                variant='body2'
-                color='textSecondary'
-                sx={{ mb: 2 }}
-            >
-                <FormattedMessage
-                    id={MSG_PREFIX + '.description'}
-                    defaultMessage={
-                        'Create endpoint definitions here, then assign them'
-                        + ' to individual API resources on the Resources page.'
-                    }
-                />
-            </Typography>
-
-            {definitions.length > 0
-                ? definitions.map((def) => (
-                    <ResourceEndpointCard
-                        key={def.id}
-                        definition={def}
-                        onDelete={openDelete}
-                        isReferenced={
-                            isDefinitionReferenced(
-                                swaggerDef.paths, def.id,
-                            )
-                        }
-                        isPrimary={primaryId === def.id}
-                        onSetPrimary={handleSetPrimary}
-                        onRemovePrimary={handleRemovePrimary}
-                        apiObject={apiObject}
-                    />
-                ))
-                : (
+        <Grid container spacing={2}>
+            <Grid item xs={12}>
+                <StyledPaper elevation={0} variant='outlined'>
                     <Typography
-                        variant='body1'
-                        color='textSecondary'
-                        sx={{ textAlign: 'center', py: 3 }}
+                        variant='h5'
+                        component='h2'
+                        gutterBottom
+                        sx={{ mb: 3 }}
                     >
                         <FormattedMessage
-                            id={MSG_PREFIX + '.empty'}
-                            defaultMessage='No endpoint definitions configured yet.'
+                            id={MSG_PREFIX + '.production.title'}
+                            defaultMessage='Production Endpoints'
                         />
                     </Typography>
-                )}
+                    {productionDefs.length > 0 ? (
+                        productionDefs.map((def) => (
+                            <ResourceEndpointCard
+                                key={def.id}
+                                definition={def}
+                                displayStage='production'
+                                onDelete={openDelete}
+                                isReferenced={
+                                    isDefinitionReferenced(
+                                        swaggerDef.paths, def.id,
+                                    )
+                                }
+                                isPrimary={primaryId === def.id}
+                                onSetPrimary={handleSetPrimary}
+                                onRemovePrimary={handleRemovePrimary}
+                                apiObject={apiObject}
+                            />
+                        ))
+                    ) : (
+                        <Typography variant='body1'>
+                            <FormattedMessage
+                                id={MSG_PREFIX + '.no.production'}
+                                defaultMessage={
+                                    'No production endpoints configured'
+                                }
+                            />
+                        </Typography>
+                    )}
+                </StyledPaper>
+            </Grid>
+            <Grid item xs={12}>
+                <StyledPaper elevation={0} variant='outlined'>
+                    <Typography
+                        variant='h5'
+                        component='h2'
+                        gutterBottom
+                        sx={{ mb: 3 }}
+                    >
+                        <FormattedMessage
+                            id={MSG_PREFIX + '.sandbox.title'}
+                            defaultMessage='Sandbox Endpoints'
+                        />
+                    </Typography>
+                    {sandboxDefs.length > 0 ? (
+                        sandboxDefs.map((def) => (
+                            <ResourceEndpointCard
+                                key={def.id}
+                                definition={def}
+                                displayStage='sandbox'
+                                onDelete={openDelete}
+                                isReferenced={
+                                    isDefinitionReferenced(
+                                        swaggerDef.paths, def.id,
+                                    )
+                                }
+                                isPrimary={primaryId === def.id}
+                                onSetPrimary={handleSetPrimary}
+                                onRemovePrimary={handleRemovePrimary}
+                                apiObject={apiObject}
+                            />
+                        ))
+                    ) : (
+                        <Typography variant='body1'>
+                            <FormattedMessage
+                                id={MSG_PREFIX + '.no.sandbox'}
+                                defaultMessage={
+                                    'No sandbox endpoints configured'
+                                }
+                            />
+                        </Typography>
+                    )}
+                </StyledPaper>
+            </Grid>
 
             {/* Delete Confirmation Dialog */}
-            <Dialog
-                open={confirmDeleteOpen}
-                onClose={() => setConfirmDeleteOpen(false)}
-            >
-                <DialogTitle>
+            <ConfirmDialog
+                key='confirm-delete-endpoint'
+                labelCancel={(
+                    <FormattedMessage
+                        id={MSG_PREFIX + '.cancelDelete'}
+                        defaultMessage='Cancel'
+                    />
+                )}
+                title={(
                     <FormattedMessage
                         id={MSG_PREFIX + '.confirmDelete'}
                         defaultMessage='Delete Endpoint Definition'
                     />
-                </DialogTitle>
-                <DialogContent>
-                    <Typography>
-                        <FormattedMessage
-                            id={MSG_PREFIX + '.deleteMsg'}
-                            defaultMessage={
-                                'Are you sure you want to delete'
-                                + ' "{name}"?'
-                            }
-                            values={{
-                                name: selectedDef?.name || '',
-                            }}
-                        />
-                    </Typography>
-                </DialogContent>
-                <DialogActions>
-                    <Button
-                        onClick={() => setConfirmDeleteOpen(false)}
-                    >
-                        <FormattedMessage
-                            id={MSG_PREFIX + '.cancelDelete'}
-                            defaultMessage='Cancel'
-                        />
-                    </Button>
-                    <Button
-                        variant='contained'
-                        color='error'
-                        onClick={handleDelete}
-                    >
-                        <FormattedMessage
-                            id={MSG_PREFIX + '.delete'}
-                            defaultMessage='Delete'
-                        />
-                    </Button>
-                </DialogActions>
-            </Dialog>
-        </Paper>
+                )}
+                message={(
+                    <FormattedMessage
+                        id={MSG_PREFIX + '.deleteMsg'}
+                        defaultMessage={
+                            'Are you sure you want to delete'
+                            + ' "{name}"?'
+                        }
+                        values={{
+                            name: selectedDef?.name || '',
+                        }}
+                    />
+                )}
+                labelOk={(
+                    <FormattedMessage
+                        id={MSG_PREFIX + '.delete'}
+                        defaultMessage='Delete'
+                    />
+                )}
+                callback={(ok) => {
+                    if (ok && selectedDef) {
+                        handleDelete();
+                    }
+                    setConfirmDeleteOpen(false);
+                    setSelectedDef(null);
+                }}
+                open={confirmDeleteOpen}
+            />
+        </Grid>
     );
 }
 
