@@ -154,6 +154,7 @@ function getTypeLabel(epType) {
 export default function ResourceEndpointCard(props) {
     const {
         definition,
+        displayStage,
         onDelete,
         isReferenced,
         isPrimary,
@@ -167,6 +168,8 @@ export default function ResourceEndpointCard(props) {
     const epType = definition.endpointConfig?.endpoint_type
         || definition.endpoint_type || 'http';
     const { prodUrls, sandUrls } = getDisplayUrls(definition);
+    const displayUrls = displayStage === 'production'
+        ? prodUrls : sandUrls;
     const restricted = isRestricted(['apim:api_create'], apiObject);
 
     return (
@@ -213,35 +216,12 @@ export default function ResourceEndpointCard(props) {
                             />
                         )}
                     </Typography>
-                    {prodUrls.length > 0 && (
+                    {displayUrls.length > 0 && (
                         <Typography variant='body2' className={classes.endpointUrl}>
-                            <FormattedMessage
-                                id={MSG_PREFIX + '.prod'}
-                                defaultMessage='Prod:'
-                            />
-                            {' '}
-                            {prodUrls[0]}
-                            {prodUrls.length > 1 && (
+                            {displayUrls[0]}
+                            {displayUrls.length > 1 && (
                                 <Chip
-                                    label={'+' + (prodUrls.length - 1) + ' more'}
-                                    size='small'
-                                    variant='outlined'
-                                    sx={{ ml: 0.5, height: 18, fontSize: '0.7rem' }}
-                                />
-                            )}
-                        </Typography>
-                    )}
-                    {sandUrls.length > 0 && (
-                        <Typography variant='body2' className={classes.endpointUrl}>
-                            <FormattedMessage
-                                id={MSG_PREFIX + '.sandbox'}
-                                defaultMessage='Sandbox:'
-                            />
-                            {' '}
-                            {sandUrls[0]}
-                            {sandUrls.length > 1 && (
-                                <Chip
-                                    label={'+' + (sandUrls.length - 1) + ' more'}
+                                    label={'+' + (displayUrls.length - 1) + ' more'}
                                     size='small'
                                     variant='outlined'
                                     sx={{ ml: 0.5, height: 18, fontSize: '0.7rem' }}
@@ -327,6 +307,7 @@ export default function ResourceEndpointCard(props) {
 }
 
 ResourceEndpointCard.defaultProps = {
+    displayStage: 'production',
     isPrimary: false,
     onSetPrimary: () => {},
     onRemovePrimary: () => {},
@@ -334,6 +315,7 @@ ResourceEndpointCard.defaultProps = {
 };
 
 ResourceEndpointCard.propTypes = {
+    displayStage: PropTypes.oneOf(['production', 'sandbox']),
     definition: PropTypes.shape({
         id: PropTypes.string.isRequired,
         name: PropTypes.string.isRequired,
