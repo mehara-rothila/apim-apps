@@ -958,6 +958,22 @@ function Endpoints(props) {
                                 defaultMessage='Endpoints'
                             />
                         </Typography>
+                        <Button
+                            variant='outlined'
+                            color='primary'
+                            size='small'
+                            disabled={isRestricted(['apim:api_create'], api)}
+                            onClick={() => {
+                                history.push(`${getBasePath(api.apiType)}${api.id}/endpoints/create`);
+                            }}
+                            style={{ marginLeft: '1em' }}
+                        >
+                            <AddCircle className={classes.buttonIcon} />
+                            <FormattedMessage
+                                id='Apis.Details.Endpoints.add.new.resource.endpoint'
+                                defaultMessage='Add New Endpoint'
+                            />
+                        </Button>
                     </div>
                     <ResourceEndpointDefinitions
                         swaggerDef={swagger}
