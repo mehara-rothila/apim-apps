@@ -19,6 +19,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import Autocomplete from '@mui/material/Autocomplete';
+import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
@@ -296,6 +297,7 @@ export default function ResourceEndpointSelector(props) {
                             isOptionEqualToValue={
                                 (option, value) => option.id === value.id
                             }
+                            disableClearable
                             value={selectedDef || null}
                             onChange={(event, newValue) => {
                                 operationsDispatcher({
@@ -314,41 +316,43 @@ export default function ResourceEndpointSelector(props) {
                                 || definitions.length === 0
                             }
                             style={{ width: 500 }}
-                            renderOption={(
-                                listOfOptions,
-                                option,
-                            ) => {
+                            renderOption={(optionProps, option) => {
                                 const typeLabel = getTypeLabel(
                                     option.endpoint_type,
                                 );
                                 return (
-                                    <li {...listOfOptions}>
-                                        {option.name}
-                                        {option.id === primaryId && (
-                                            <Chip
-                                                label='Primary'
-                                                size='small'
-                                                color='primary'
-                                                sx={{
-                                                    ml: 1,
-                                                    height: 20,
-                                                    fontSize: '0.7rem',
-                                                }}
-                                            />
-                                        )}
-                                        {typeLabel && (
-                                            <Chip
-                                                label={typeLabel}
-                                                size='small'
-                                                variant='outlined'
-                                                sx={{
-                                                    ml: 0.5,
-                                                    height: 20,
-                                                    fontSize: '0.7rem',
-                                                }}
-                                            />
-                                        )}
-                                    </li>
+                                    <Box
+                                        component='li'
+                                        {...optionProps}
+                                    >
+                                        <Box>
+                                            {option.name}
+                                            {option.id === primaryId && (
+                                                <Chip
+                                                    label='Primary'
+                                                    size='small'
+                                                    color='primary'
+                                                    sx={{
+                                                        ml: 1,
+                                                        height: 20,
+                                                        fontSize: '0.7rem',
+                                                    }}
+                                                />
+                                            )}
+                                            {typeLabel && (
+                                                <Chip
+                                                    label={typeLabel}
+                                                    size='small'
+                                                    variant='outlined'
+                                                    sx={{
+                                                        ml: 0.5,
+                                                        height: 20,
+                                                        fontSize: '0.7rem',
+                                                    }}
+                                                />
+                                            )}
+                                        </Box>
+                                    </Box>
                                 );
                             }}
                             renderInput={(params) => (
